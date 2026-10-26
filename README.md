@@ -98,6 +98,8 @@ Open http://127.0.0.1:5000. The Docker configuration defaults to development coo
 
 ## Production deployment
 
+**Self-host on this Windows PC with Cloudflare Tunnel:** see [Windows hosting](docs/WINDOWS_HOSTING.md). It keeps the existing SQLite database, runs Waitress on `127.0.0.1:5000`, and publishes the site over HTTPS without router port forwarding.
+
 **Vercel Flask entrypoint:** when importing only the backend, set Root Directory to `backend` and Framework Preset to `Flask`. `backend/wsgi.py` exports the top-level `app` instance from the existing application factory; Vercel recognizes this filename without a custom build/output command. Keep the install command `pip install -r requirements.txt`. Push this file before redeploying an older commit that only contains `manage.py`.
 
 On Vercel, `VERCEL=1` enables production checks automatically. Set a stable `SECRET_KEY` of at least 32 characters, a real PostgreSQL `DATABASE_URL`, and the actual HTTPS `FRONTEND_URL`. Run migrations against that database separately. Production initialization does not create a local `instance` directory or generate a development signing key. Backend-only deployment does not build or serve the separately hosted React frontend. Attachments still require durable storage integration; local filesystem uploads are not yet suitable for Vercel Functions.

@@ -10,6 +10,13 @@ from app.extensions import db
 from app.models import User, Department, Task, TaskAssignment
 
 
+@pytest.fixture(autouse=True)
+def ignore_host_dotenv(monkeypatch):
+    # A hosting machine's backend/.env (production mode, real secret) must not leak into tests.
+    import importlib
+    monkeypatch.setattr(importlib.import_module('app'), 'load_dotenv', lambda *args, **kwargs: None)
+
+
 @pytest.fixture
 def app(tmp_path):
     app = create_app({'TESTING':True,'SQLALCHEMY_DATABASE_URI':'sqlite://',

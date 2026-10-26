@@ -8,3 +8,5 @@ frontend/dist
 backend/instance
 backend/uploads
 **/.env
+backups
+logs

@@ -27,7 +27,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='http-smoke-',dir=root/'.qa') as temporary:
         password = secrets.token_urlsafe(24)
         app = create_app({'TESTING':True,'SECRET_KEY':secrets.token_hex(32),'SQLALCHEMY_DATABASE_URI':'sqlite:///'+str(Path(temporary)/'test.db').replace('\\','/'),
-                          'UPLOAD_FOLDER':str(Path(temporary)/'uploads'),'RATELIMIT_ENABLED':False})
+                          'UPLOAD_FOLDER':str(Path(temporary)/'uploads'),'RATELIMIT_ENABLED':False,
+                          # Plain-HTTP harness: a production backend/.env would otherwise mark cookies Secure.
+                          'SESSION_COOKIE_SECURE':False})
         with app.app_context():
             db.create_all()
             dept = Department(name='QA Operations')

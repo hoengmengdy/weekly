@@ -11,3 +11,7 @@ frontend/dist/
 *.tsbuildinfo
 *.log
 .qa/
+backups/
+logs/
+.env.*
+!.env.example

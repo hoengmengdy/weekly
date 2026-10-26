@@ -10,6 +10,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash
 from .extensions import db, migrate, csrf, limiter
 
@@ -45,6 +46,8 @@ def create_app(test_config=None):
     app.config.update(
         SECRET_KEY=secret, SQLALCHEMY_DATABASE_URI=database_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        # Serverless Postgres (Neon) closes idle connections; test them before reuse.
+        SQLALCHEMY_ENGINE_OPTIONS={'pool_pre_ping': True},
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SECURE=production,
         SESSION_COOKIE_SAMESITE='Lax', PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
         MAX_CONTENT_LENGTH=int(os.getenv('MAX_CONTENT_LENGTH', 10 * 1024 * 1024)),
@@ -60,8 +63,17 @@ def create_app(test_config=None):
     )
     if test_config:
         app.config.update(test_config)
-    if production and database_url.startswith('sqlite:') and not test_config:
+    # A single self-hosted Waitress process may keep its local SQLite file;
+    # serverless hosts (Vercel) never may, because their bundle is ephemeral.
+    allow_sqlite = os.getenv('ALLOW_SQLITE_IN_PRODUCTION', 'false').lower() == 'true' and os.getenv('VERCEL') != '1'
+    if production and database_url.startswith('sqlite:') and not test_config and not allow_sqlite:
         raise RuntimeError('Production requires PostgreSQL DATABASE_URL')
+    # Behind a reverse proxy or Cloudflare Tunnel every request arrives from
+    # 127.0.0.1; trust exactly this many X-Forwarded-For/Proto hops so rate
+    # limits see the real client and HTTPS is detected. Leave 0 when exposed directly.
+    proxy_hops = int(os.getenv('TRUSTED_PROXY_HOPS', '0'))
+    if proxy_hops:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_hops, x_proto=proxy_hops)
     db.init_app(app)
     from . import models
     migrate.init_app(app, db, render_as_batch=database_url.startswith('sqlite:'))
