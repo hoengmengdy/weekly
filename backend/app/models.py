@@ -57,6 +57,7 @@ class Task(Base, db.Model):
     completion_criteria = db.Column(db.Text, nullable=False, default='')
     estimated_hours = db.Column(db.Float, nullable=False, default=0)
     internal_notes = db.Column(db.Text, nullable=False, default='')
+    work_links = db.Column(db.Text, nullable=False, default='', server_default='')
     archived = db.Column(db.Boolean, nullable=False, default=False)
     assignments = db.relationship('TaskAssignment', cascade='all, delete-orphan', backref='task')
     __table_args__ = (

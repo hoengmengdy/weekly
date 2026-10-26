@@ -48,6 +48,12 @@ class TaskInput(Schema):
     completion_criteria: str = Field(default='', max_length=10000)
     estimated_hours: float = Field(default=0, ge=0, le=100000)
     internal_notes: str = Field(default='', max_length=10000)
+    work_links: str = Field(default='', max_length=30734)
+
+    @field_validator('work_links')
+    @classmethod
+    def valid_work_links(cls, value):
+        return clean_work_links(value)
 
     @model_validator(mode='after')
     def dates(self):
@@ -61,6 +67,25 @@ class TaskInput(Schema):
 class StatusInput(Schema):
     status: TaskStatus
     progress: float | None = Field(default=None, ge=0, le=100)
+
+
+def clean_work_links(value):
+    """Normalize pasted work links (bullets, missing https://) and allow at most 15, one per line."""
+    links = [re.sub(r'^(?:[-*•]\s*|\d+[.)]\s+)', '', line.strip()) for line in value.splitlines()]
+    links = [link for link in links if link]
+    if len(links) > 15:
+        raise ValueError('Add at most 15 work links, one per line')
+    validated = []
+    for link in links:
+        if re.match(r'^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#:]|$)', link, re.IGNORECASE):
+            link = 'https://' + link
+        url = TypeAdapter(HttpUrl).validate_python(link)
+        if url.username or url.password:
+            raise ValueError('Work links must not contain login credentials')
+        if len(link) > 2048 or len(str(url)) > 2048:
+            raise ValueError('Each work link must have at most 2048 characters')
+        validated.append(str(url))
+    return '\n'.join(validated)
 
 
 class ReportInput(Schema):
@@ -82,21 +107,7 @@ class ReportInput(Schema):
     @field_validator('evidence_url')
     @classmethod
     def valid_evidence_url(cls, value):
-        links = [re.sub(r'^(?:[-*\u2022]\s*|\d+[.)]\s+)', '', line.strip()) for line in value.splitlines()]
-        links = [link for link in links if link]
-        if len(links) > 15:
-            raise ValueError('Add at most 15 work links, one per line')
-        validated = []
-        for link in links:
-            if re.match(r'^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#:]|$)', link, re.IGNORECASE):
-                link = 'https://' + link
-            url = TypeAdapter(HttpUrl).validate_python(link)
-            if url.username or url.password:
-                raise ValueError('Work links must not contain login credentials')
-            if len(link) > 2048 or len(str(url)) > 2048:
-                raise ValueError('Each work link must have at most 2048 characters')
-            validated.append(str(url))
-        return '\n'.join(validated)
+        return clean_work_links(value)
 
 
 class Feedback(Schema):

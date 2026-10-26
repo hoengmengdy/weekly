@@ -100,3 +100,16 @@ def test_report_progress_follows_work_links(client, sign_in, report_data, count,
     sign_in(3)
     report = client.post('/api/v1/reports', json={**report_data, 'evidence_url': links}).json
     assert report['progress'] == expected
+
+
+def test_task_work_links_saved_like_report_links(client, sign_in):
+    sign_in(2)
+    links = '\n'.join(['- facebook.com/page/posts/1', 'https://example.com/post/2'])
+    task = client.post('/api/v1/tasks', json={'title': 'Post videos', 'assigned_employee_ids': [3],
+                                              'start_date': '2026-01-01', 'deadline': '2030-01-01', 'work_links': links})
+    assert task.status_code == 201, task.json
+    assert task.json['work_links'].splitlines() == ['https://facebook.com/page/posts/1', 'https://example.com/post/2']
+    too_many = '\n'.join(f'https://example.com/{i}' for i in range(16))
+    assert client.patch(f"/api/v1/tasks/{task.json['id']}", json={'work_links': too_many}).status_code == 422
+    sign_in(3)
+    assert client.get(f"/api/v1/tasks/{task.json['id']}").json['work_links'].count('https://') == 2

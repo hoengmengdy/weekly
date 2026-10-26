@@ -125,7 +125,7 @@ def task_json(task, detail=False):
     assignments = task.assignments
     if g.user.role == 'employee':
         assignments = [a for a in assignments if a.user_id == g.user.id]
-    data = {key: getattr(task, key) for key in ('id','title','description','category_id','department_id','creator_id','priority','status','completion_criteria','estimated_hours','archived')}
+    data = {key: getattr(task, key) for key in ('id','title','description','category_id','department_id','creator_id','priority','status','completion_criteria','estimated_hours','archived','work_links')}
     data.update(start_date=iso(task.start_date), deadline=iso(task.deadline), created_at=iso(task.created_at),
                 progress=round(sum(a.progress for a in assignments) / len(assignments), 1) if assignments else 0,
                 overdue=task.deadline < today() and task.status not in ('Completed','Cancelled'),
