@@ -23,9 +23,12 @@ def sqlite_foreign_keys(connection, record):
 def create_app(test_config=None):
     root = Path(__file__).resolve().parents[1]
     load_dotenv(root / '.env')
+    production = os.getenv('FLASK_ENV') == 'production' or os.getenv('VERCEL') == '1'
     app = Flask(__name__, instance_path=str(root / 'instance'), static_folder=None)
-    Path(app.instance_path).mkdir(exist_ok=True)
-    production = os.getenv('FLASK_ENV') == 'production'
+    # Hosted production uses an external database and environment signing key.
+    # Its application bundle may be read-only; only local development needs it.
+    if not production:
+        Path(app.instance_path).mkdir(exist_ok=True)
     secret = os.getenv('SECRET_KEY')
     if production and (not secret or len(secret) < 32):
         raise RuntimeError('Production SECRET_KEY must have at least 32 characters')

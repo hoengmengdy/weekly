@@ -98,6 +98,10 @@ Open http://127.0.0.1:5000. The Docker configuration defaults to development coo
 
 ## Production deployment
 
+**Vercel Flask entrypoint:** when importing only the backend, set Root Directory to `backend` and Framework Preset to `Flask`. `backend/wsgi.py` exports the top-level `app` instance from the existing application factory; Vercel recognizes this filename without a custom build/output command. Keep the install command `pip install -r requirements.txt`. Push this file before redeploying an older commit that only contains `manage.py`.
+
+On Vercel, `VERCEL=1` enables production checks automatically. Set a stable `SECRET_KEY` of at least 32 characters, a real PostgreSQL `DATABASE_URL`, and the actual HTTPS `FRONTEND_URL`. Run migrations against that database separately. Production initialization does not create a local `instance` directory or generate a development signing key. Backend-only deployment does not build or serve the separately hosted React frontend. Attachments still require durable storage integration; local filesystem uploads are not yet suitable for Vercel Functions.
+
 The recommended deployment serves the built frontend and Flask API under one HTTPS origin, keeping cookies and CSRF straightforward.
 
 **Render:** deploy the Dockerfile as a web service, bind the platform port with `waitress-serve --listen=0.0.0.0:$PORT INDEx:app`, attach a persistent disk for `UPLOAD_FOLDER`, and connect a managed PostgreSQL instance. Set production environment variables and SMTP. Run the migration as a pre-deploy command and create the first admin once from a trusted shell. Configure `/health` as the health check. Back up both PostgreSQL and uploads.
