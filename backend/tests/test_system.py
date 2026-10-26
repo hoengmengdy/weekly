@@ -207,7 +207,8 @@ def test_manual_progress_and_empty_submission(client,sign_in,report_data,app):
     sign_in(3)
     report=client.post(BASE+'/reports',json=report_data|{'quantity_target':None,'progress':35,'actual_output':''}).json
     assert report['progress']==35
-    assert client.post(BASE+f'/reports/{report["id"]}/submit',json={}).status_code==422
+    # Description and output fields were removed from the form; an empty one no longer blocks submission.
+    assert client.post(BASE+f'/reports/{report["id"]}/submit',json={}).status_code==200
     app.config['ALLOW_OVERNIGHT']=True
     overnight=client.post(BASE+'/reports',json=report_data|{'start_time':'23:30','end_time':'01:00'})
     assert overnight.json['total_hours']==1.5

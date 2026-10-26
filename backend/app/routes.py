@@ -555,8 +555,6 @@ def submit_report(id):
     report = report_or_404(id)
     editable_report(report)
     task = report_assignment(report.task_id,allow_closed=report.status=='Revision Requested')
-    if not all(s.strip() for s in (report.work_description,report.expected_output,report.actual_output)):
-        abort(422, description='Work description, expected output and actual output are required to submit.')
     report.status = 'Submitted'
     report.submitted_at = now()
     review_record(report,'Submitted')

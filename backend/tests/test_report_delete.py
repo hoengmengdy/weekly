@@ -83,3 +83,11 @@ def test_report_photo_stored_in_database_and_shown_inline(app, client, sign_in, 
     assert client.delete(f'/api/v1/reports/{id}').status_code == 200
     with app.app_context():
         assert Attachment.query.filter_by(report_id=id).count() == 0
+
+
+def test_report_submits_without_description_and_outputs(client, sign_in, report_data):
+    data = {**report_data, 'work_description': '', 'expected_output': '', 'actual_output': ''}
+    sign_in(3)
+    id = client.post('/api/v1/reports', json=data).json['id']
+    submitted = client.post(f'/api/v1/reports/{id}/submit')
+    assert submitted.status_code == 200 and submitted.json['status'] == 'Submitted'

@@ -38,9 +38,6 @@ describe('session and report workflow',()=>{
   fireEvent.click(screen.getByRole('link',{name:'New report'}));
   await screen.findByRole('button',{name:'Save draft'});
   fireEvent.change(screen.getByLabelText(/Related task/),{target:{value:'1'}});
-  fireEvent.change(screen.getByLabelText('Work description'),{target:{value:'Checked source documents'}});
-  fireEvent.change(screen.getByLabelText('Expected output'),{target:{value:'Ten checked'}});
-  fireEvent.change(screen.getByLabelText('Actual output'),{target:{value:'Five checked'}});
   const links=Array.from({length:15},(_,i)=>`https://www.facebook.com/example/posts/${i+1}`);
   const pastedLinks=links.map((link,i)=>i===0?'-'+link:i===1?link.replace('https://',''):link);
   fireEvent.change(screen.getByLabelText('Facebook / work links (up to 15)'),{target:{value:pastedLinks.join('\n')}});
