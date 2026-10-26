@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from datetime import date, timedelta
@@ -19,10 +20,12 @@ def ignore_host_dotenv(monkeypatch):
 
 @pytest.fixture
 def app(tmp_path):
-    app = create_app({'TESTING':True,'SQLALCHEMY_DATABASE_URI':'sqlite://',
+    # TEST_DATABASE_URL runs the suite against a disposable PostgreSQL database (tables are dropped).
+    app = create_app({'TESTING':True,'SQLALCHEMY_DATABASE_URI':os.getenv('TEST_DATABASE_URL','sqlite://'),
                       'SECRET_KEY':'test-secret-not-for-production','WTF_CSRF_ENABLED':False,
                       'RATELIMIT_ENABLED':False,'UPLOAD_FOLDER':str(tmp_path/'uploads')})
     with app.app_context():
+        db.drop_all()
         db.create_all()
         dept = Department(name='Operations')
         db.session.add(dept)
@@ -37,10 +40,17 @@ def app(tmp_path):
             db.session.flush()
             db.session.add(TaskAssignment(task_id=id,user_id=assignee))
         db.session.commit()
+        if db.engine.dialect.name == 'postgresql':
+            # Seed rows use explicit ids; move sequences past them as a real database would.
+            for table in db.metadata.sorted_tables:
+                if 'id' in table.c:
+                    db.session.execute(db.text(f"SELECT setval(pg_get_serial_sequence('{table.name}','id'), COALESCE((SELECT MAX(id) FROM {table.name}), 0) + 1, false)"))
+            db.session.commit()
     yield app
     with app.app_context():
         db.session.remove()
         db.drop_all()
+        db.engine.dispose()
 
 
 @pytest.fixture
