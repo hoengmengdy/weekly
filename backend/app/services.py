@@ -140,7 +140,7 @@ def task_json(task, detail=False):
 
 
 def attachment_json(a):
-    return {'id': a.id, 'filename': a.filename, 'size': a.size, 'url': f'/api/v1/attachments/{a.id}'}
+    return {'id': a.id, 'filename': a.filename, 'size': a.size, 'mime': a.mime, 'url': f'/api/v1/attachments/{a.id}'}
 
 
 def report_json(report, detail=False):

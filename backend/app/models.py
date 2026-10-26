@@ -121,6 +121,8 @@ class Attachment(Base, db.Model):
     storage_name = db.Column(db.String(80), unique=True, nullable=False)
     mime = db.Column(db.String(100), nullable=False)
     size = db.Column(db.Integer, nullable=False)
+    # File bytes; deferred so listing attachments never loads them. NULL for older disk-stored files.
+    data = db.deferred(db.Column(db.LargeBinary))
 
 
 class ReportReview(Base, db.Model):

@@ -103,7 +103,7 @@ def create_app(test_config=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'"
         if production:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         if response.content_type and ('json' in response.content_type or '/exports/' in __import__('flask').request.path):

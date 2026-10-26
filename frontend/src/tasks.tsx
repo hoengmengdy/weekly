@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { shrinkImage } from './photos';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Plus, ArrowUpRight, Paperclip, Copy, Archive } from 'lucide-react';
 import { z } from 'zod';
@@ -24,7 +25,8 @@ export function TaskForm() {
 }
 export function Attachments({items,path,canUpload,onUpdated}:{items:Attachment[];path:string;canUpload:boolean;onUpdated:()=>void}) {
  const {t}=useLanguage();const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();
- return <div className="attachments">{items.length?items.map(a=><a key={a.id} href={a.url} className="file-link"><Paperclip size={17}/>{a.filename}<small>{Math.ceil(a.size/1024)} KB</small></a>):<p className="muted">{t('None')}</p>}{error!==undefined&&<ErrorBox error={error}/>} {canUpload&&<label className="upload-label">{t(busy?'Loading':'Upload evidence')}<input type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const form=new FormData();form.append('file',file);setBusy(true);setError(undefined);try{await api(path,'POST',form);onUpdated();}catch(err){setError(err);}finally{setBusy(false);e.target.value='';}}}/></label>}</div>;
+ const photos=items.filter(a=>a.mime?.startsWith('image/'));const files=items.filter(a=>!a.mime?.startsWith('image/'));
+ return <div className="attachments">{photos.length>0&&<div className="photo-grid">{photos.map(a=><a key={a.id} href={`${a.url}?inline=1`} target="_blank" rel="noopener"><img src={`${a.url}?inline=1`} alt={a.filename} loading="lazy"/></a>)}</div>}{files.map(a=><a key={a.id} href={a.url} className="file-link"><Paperclip size={17}/>{a.filename}<small>{Math.ceil(a.size/1024)} KB</small></a>)}{!items.length&&<p className="muted">{t('None')}</p>}{error!==undefined&&<ErrorBox error={error}/>} {canUpload&&<label className="upload-label">{t(busy?'Loading':'Upload evidence')}<input type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const form=new FormData();form.append('file',file.type.startsWith('image/')?await shrinkImage(file):file);setBusy(true);setError(undefined);try{await api(path,'POST',form);onUpdated();}catch(err){setError(err);}finally{setBusy(false);e.target.value='';}}}/></label>}</div>;
 }
 export function TaskDetails() {
  const {id}=useParams();const nav=useNavigate();const {user}=useAuth();const {t}=useLanguage();const toast=useToast();const q=useApi<Task>(`/tasks/${id}`);const history=useApi<{items:{id:number;action:string;actor_id:number;created_at:string;details:Record<string,unknown>}[]}>(`/tasks/${id}/history`);const [error,setError]=useState<unknown>();

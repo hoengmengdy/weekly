@@ -684,22 +684,21 @@ def upload(id):
     if not file:
         abort(422, description='Select a file.')
     filename,extension,raw,mime = validate_upload(file)
-    name = secrets.token_hex(24)+extension
-    folder = Path(current_app.config['UPLOAD_FOLDER'])
-    folder.mkdir(parents=True,exist_ok=True)
-    target = folder/name
-    target.write_bytes(raw)
+    # Stored in the database so uploads survive serverless hosts with no persistent disk.
     attachment = Attachment(report_id=report.id if report else None,task_id=task.id if task else None,
-                            owner_id=g.user.id,filename=filename,storage_name=name,mime=mime,size=len(raw))
-    try:
-        db.session.add(attachment)
-        db.session.flush()
-        audit('report' if report else 'task',id,'attachment_added',{'filename':filename})
-        db.session.commit()
-    except Exception:
-        target.unlink(missing_ok=True)
-        raise
+                            owner_id=g.user.id,filename=filename,storage_name=secrets.token_hex(24)+extension,
+                            mime=mime,size=len(raw),data=raw)
+    db.session.add(attachment)
+    db.session.flush()
+    audit('report' if report else 'task',id,'attachment_added',{'filename':filename})
+    db.session.commit()
     return attachment_json(attachment),201
+
+
+def send_attachment(item, as_attachment):
+    # Older uploads were written to UPLOAD_FOLDER; newer ones live in the database.
+    source = io.BytesIO(item.data) if item.data is not None else Path(current_app.config['UPLOAD_FOLDER'])/item.storage_name
+    return send_file(source,mimetype=item.mime,as_attachment=as_attachment,download_name=item.filename,max_age=0)
 
 
 @api.get('/attachments/<int:id>')
@@ -712,8 +711,8 @@ def download(id):
         task_or_404(item.task_id)
     elif item.owner_id != g.user.id:
         abort(404)
-    return send_file(Path(current_app.config['UPLOAD_FOLDER'])/item.storage_name,mimetype=item.mime,
-                     as_attachment=True,download_name=item.filename,max_age=0)
+    inline = request.args.get('inline') == '1' and item.mime.startswith('image/')
+    return send_attachment(item, as_attachment=not inline)
 
 
 @api.post('/auth/profile-image')
@@ -725,11 +724,8 @@ def profile_image():
     filename,extension,raw,mime = validate_upload(file)
     if extension not in ('.png','.jpg','.jpeg'):
         abort(422, description='Profile images must be PNG or JPEG.')
-    name = secrets.token_hex(24)+extension
-    folder = Path(current_app.config['UPLOAD_FOLDER'])
-    folder.mkdir(parents=True,exist_ok=True)
-    (folder/name).write_bytes(raw)
-    item = Attachment(owner_id=g.user.id,filename=filename,storage_name=name,mime=mime,size=len(raw))
+    item = Attachment(owner_id=g.user.id,filename=filename,storage_name=secrets.token_hex(24)+extension,
+                      mime=mime,size=len(raw),data=raw)
     db.session.add(item)
     db.session.flush()
     g.user.profile_image_id = str(item.id)
@@ -744,7 +740,7 @@ def current_profile_image():
     if not g.user.profile_image_id:
         abort(404)
     item = Attachment.query.filter_by(id=int(g.user.profile_image_id),owner_id=g.user.id).first_or_404()
-    return send_file(Path(current_app.config['UPLOAD_FOLDER'])/item.storage_name,mimetype=item.mime,max_age=0)
+    return send_attachment(item, as_attachment=False)
 
 
 @api.get('/dashboard/<role>')

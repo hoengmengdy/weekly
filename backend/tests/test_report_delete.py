@@ -59,3 +59,27 @@ def test_id_filters_are_integers_and_reject_text(client, sign_in):
     assert client.get('/api/v1/reports?department=x').status_code == 422
     sign_in(1)
     assert client.get('/api/v1/employees?department=1').status_code == 200
+
+
+def test_report_photo_stored_in_database_and_shown_inline(app, client, sign_in, report_data, tmp_path):
+    import io
+    from PIL import Image
+    from app.models import Attachment
+    buffer = io.BytesIO()
+    Image.new('RGB', (40, 30), (200, 120, 40)).save(buffer, 'JPEG')
+    jpeg = buffer.getvalue()
+    id = create_report(client, sign_in, report_data)
+    upload = client.post(f'/api/v1/reports/{id}/attachments', data={'file': (io.BytesIO(jpeg), 'work.jpg')},
+                         content_type='multipart/form-data')
+    assert upload.status_code == 201 and upload.json['mime'] == 'image/jpeg'
+    # Nothing is written to disk, so hosts without persistent storage keep the photo.
+    assert not (tmp_path / 'uploads').exists() or not any((tmp_path / 'uploads').iterdir())
+    inline = client.get(upload.json['url'] + '?inline=1')
+    assert inline.status_code == 200 and inline.data == jpeg
+    assert 'attachment' not in inline.headers.get('Content-Disposition', '')
+    download = client.get(upload.json['url'])
+    assert download.data == jpeg and 'attachment' in download.headers['Content-Disposition']
+    assert client.get(f'/api/v1/reports/{id}').json['attachments'][0]['mime'] == 'image/jpeg'
+    assert client.delete(f'/api/v1/reports/{id}').status_code == 200
+    with app.app_context():
+        assert Attachment.query.filter_by(report_id=id).count() == 0
