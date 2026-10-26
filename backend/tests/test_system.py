@@ -168,7 +168,7 @@ def test_draft_revision_approval_and_reopen(client,sign_in,report_data,app):
     response=client.post(BASE+'/reports',json=report_data)
     assert response.status_code==201,response.json
     r=response.json
-    assert r['status']=='Draft' and r['progress']==80 and r['total_hours']==2.5
+    assert r['status']=='Draft' and r['progress']==0 and r['total_hours']==2.5  # no work links yet
     id=r['id']
     assert client.post(BASE+f'/reports/{id}/submit',json={}).json['status']=='Submitted'
     assert client.patch(BASE+f'/reports/{id}',json={'notes':'silent change'}).status_code==409
@@ -177,7 +177,7 @@ def test_draft_revision_approval_and_reopen(client,sign_in,report_data,app):
     assert client.post(BASE+f'/reports/{id}/request-revision',json={}).status_code==422
     assert client.post(BASE+f'/reports/{id}/request-revision',json={'feedback':'Attach supporting figures'}).json['status']=='Revision Requested'
     sign_in(3)
-    assert client.patch(BASE+f'/reports/{id}',json={'quantity_completed':12,'notes':'Added figures'}).json['progress']==100
+    assert client.patch(BASE+f'/reports/{id}',json={'evidence_url':'\n'.join(f'https://example.com/post/{i}' for i in range(15)),'notes':'Added links'}).json['progress']==100
     assert client.post(BASE+f'/reports/{id}/submit',json={}).status_code==200
     sign_in(2)
     assert client.post(BASE+f'/reports/{id}/approve',json={'feedback':'Verified'}).json['status']=='Approved'
@@ -206,7 +206,7 @@ def test_report_validation(client,sign_in,report_data,override):
 def test_manual_progress_and_empty_submission(client,sign_in,report_data,app):
     sign_in(3)
     report=client.post(BASE+'/reports',json=report_data|{'quantity_target':None,'progress':35,'actual_output':''}).json
-    assert report['progress']==35
+    assert report['progress']==0  # progress comes from work links, not a manual value
     # Description and output fields were removed from the form; an empty one no longer blocks submission.
     assert client.post(BASE+f'/reports/{report["id"]}/submit',json={}).status_code==200
     app.config['ALLOW_OVERNIGHT']=True

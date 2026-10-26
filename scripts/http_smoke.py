@@ -76,7 +76,7 @@ def main():
                 call(f'/api/v1/tasks/{task["id"]}/status','PATCH',{'status':status,'progress':50})
             links=[f'https://www.facebook.com/example/posts/{i+1}' for i in range(15)]
             report=call('/api/v1/reports','POST',{'task_id':task['id'],'report_date':date.today().isoformat(),'work_description':'បានធ្វើការតាមផែនការ','expected_output':'10 records','actual_output':'5 records','evidence_url':'\n'.join(links),'quantity_target':10,'quantity_completed':5,'start_time':'08:30','end_time':'11:00'})
-            assert report['progress']==50 and report['total_hours']==2.5
+            assert report['progress']==100 and report['total_hours']==2.5
             assert report['evidence_url'].splitlines()==links
             call(f'/api/v1/reports/{report["id"]}/submit','POST',{})
             login(2)

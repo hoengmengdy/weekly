@@ -1,3 +1,4 @@
+import pytest
 from app.extensions import db
 from app.models import AuditLog, DailyReport, Notification, ReportReview
 
@@ -91,3 +92,11 @@ def test_report_submits_without_description_and_outputs(client, sign_in, report_
     id = client.post('/api/v1/reports', json=data).json['id']
     submitted = client.post(f'/api/v1/reports/{id}/submit')
     assert submitted.status_code == 200 and submitted.json['status'] == 'Submitted'
+
+
+@pytest.mark.parametrize('count,expected', [(0, 0), (1, 6.67), (8, 53.33), (15, 100)])
+def test_report_progress_follows_work_links(client, sign_in, report_data, count, expected):
+    links = '\n'.join(f'https://example.com/post/{i}' for i in range(count))
+    sign_in(3)
+    report = client.post('/api/v1/reports', json={**report_data, 'evidence_url': links}).json
+    assert report['progress'] == expected

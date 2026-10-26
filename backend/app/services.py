@@ -162,6 +162,9 @@ def review_record(report, action, feedback=''):
     audit('report', report.id, action, {'feedback': feedback})
 
 
+WORK_LINK_TARGET = 15
+
+
 def apply_report(report, data):
     values = data.model_dump()
     if data.report_date > today():
@@ -175,8 +178,9 @@ def apply_report(report, data):
             abort(422, description='Overnight work is disabled by system policy.')
         end += timedelta(days=1)
     values['total_hours'] = round((end-start).total_seconds()/3600, 2)
-    if data.quantity_target:
-        values['progress'] = round(min(100, data.quantity_completed/data.quantity_target*100), 2)
+    # Progress follows the work links: each link is 1/15, so 15 links (the maximum) is 100%.
+    links = [line for line in data.evidence_url.splitlines() if line.strip()]
+    values['progress'] = round(min(len(links), WORK_LINK_TARGET) / WORK_LINK_TARGET * 100, 2)
     for key, value in values.items():
         setattr(report, key, value)
 
