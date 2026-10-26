@@ -15,3 +15,7 @@ backups/
 logs/
 .env.*
 !.env.example
+
+.vercel
+.env*
+!.env.example
