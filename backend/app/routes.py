@@ -529,6 +529,26 @@ def update_report(id):
     return report_json(report,True)
 
 
+@api.delete('/reports/<int:id>')
+@authenticated
+def delete_report(id):
+    report = report_or_404(id)
+    # Authors may discard their own drafts; administrators may remove any report.
+    if not privileged() and not (report.user_id == g.user.id and report.status == 'Draft'):
+        abort(403, description='Only administrators can delete submitted reports. Authors can delete their own drafts.')
+    files = [item.storage_name for item in report.attachments]
+    for item in list(report.attachments) + list(report.reviews):
+        db.session.delete(item)
+    Notification.query.filter_by(link=f'/reports/{id}').delete(synchronize_session=False)
+    audit('report', id, 'deleted', {'task_id': report.task_id, 'author_id': report.user_id,
+                                     'report_date': report.report_date.isoformat(), 'status': report.status})
+    db.session.delete(report)
+    db.session.commit()
+    for name in files:
+        (Path(current_app.config['UPLOAD_FOLDER'])/name).unlink(missing_ok=True)
+    return {'message': 'Report deleted'}
+
+
 @api.post('/reports/<int:id>/submit')
 @authenticated
 def submit_report(id):
