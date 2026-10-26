@@ -167,7 +167,7 @@ def employees():
         term = '%' + request.args['q'][:200] + '%'
         query = query.filter(or_(User.full_name.ilike(term),User.employee_id.ilike(term),User.email.ilike(term)))
     if request.args.get('department'):
-        query = query.filter(User.department_id == request.args['department'])
+        query = query.filter(User.department_id == filter_value('department', User.department_id))
     if request.args.get('role'):
         query = query.filter(User.role == request.args['role'])
     if request.args.get('active'):

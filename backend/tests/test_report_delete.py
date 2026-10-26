@@ -47,3 +47,15 @@ def test_admin_deletes_reviewed_report_with_history(app, client, sign_in, report
         assert db.session.get(DailyReport, id) is None
         assert ReportReview.query.filter_by(report_id=id).count() == 0
         assert Notification.query.filter_by(link=f'/reports/{id}').count() == 0
+
+
+def test_id_filters_are_integers_and_reject_text(client, sign_in):
+    # PostgreSQL rejects comparing text query values with integer columns; filters must convert them.
+    sign_in(3)
+    tasks = client.get('/api/v1/tasks?employee=3')
+    assert tasks.status_code == 200 and [t['id'] for t in tasks.json['items']] == [1]
+    assert client.get('/api/v1/tasks?employee=abc').status_code == 422
+    assert client.get('/api/v1/reports?task=1&employee=3').status_code == 200
+    assert client.get('/api/v1/reports?department=x').status_code == 422
+    sign_in(1)
+    assert client.get('/api/v1/employees?department=1').status_code == 200

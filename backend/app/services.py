@@ -181,14 +181,25 @@ def apply_report(report, data):
         setattr(report, key, value)
 
 
+def filter_value(param, column):
+    # Query strings are text; PostgreSQL (unlike SQLite) refuses to compare text with integer columns.
+    value = request.args[param]
+    if column.type.python_type is int:
+        try:
+            return int(value)
+        except ValueError:
+            abort(422, description=f'Invalid {param} filter')
+    return value
+
+
 def report_filters(query):
     for param, column in [('employee', DailyReport.user_id), ('task', DailyReport.task_id), ('report_status', DailyReport.status)]:
         if request.args.get(param):
-            query = query.filter(column == request.args[param])
+            query = query.filter(column == filter_value(param, column))
     query = query.join(User, DailyReport.user_id == User.id).join(Task, DailyReport.task_id == Task.id)
     for param, column in [('department',User.department_id), ('manager',User.manager_id), ('category',Task.category_id), ('priority',Task.priority), ('task_status',Task.status)]:
         if request.args.get(param):
-            query = query.filter(column == request.args[param])
+            query = query.filter(column == filter_value(param, column))
     for param, compare in [('date_from', 'ge'), ('date_to', 'le')]:
         if request.args.get(param):
             try:
@@ -206,11 +217,11 @@ def task_filters(query):
     query = query.filter(Task.archived == (request.args.get('archived') == 'true'))
     for param, column in [('status',Task.status), ('department',Task.department_id), ('priority',Task.priority), ('category',Task.category_id)]:
         if request.args.get(param):
-            query = query.filter(column == request.args[param])
+            query = query.filter(column == filter_value(param, column))
     if request.args.get('employee'):
-        query = query.filter(Task.assignments.any(TaskAssignment.user_id == request.args['employee']))
+        query = query.filter(Task.assignments.any(TaskAssignment.user_id == filter_value('employee', TaskAssignment.user_id)))
     if request.args.get('manager'):
-        query = query.filter(Task.assignments.any(TaskAssignment.user.has(manager_id=request.args['manager'])))
+        query = query.filter(Task.assignments.any(TaskAssignment.user.has(manager_id=filter_value('manager', User.manager_id))))
     for param, before in [('date_from',False),('date_to',True)]:
         if request.args.get(param):
             try:
