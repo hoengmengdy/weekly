@@ -188,6 +188,7 @@
 :root[data-theme=dark] .kind-picker button.active{border-color:var(--navy);background:var(--navy);color:#fff}
 :root[data-theme=dark] .check-line{color:#c4cfca}
 :root[data-theme=dark] .dialog-foot{border-top:1px solid #393e3b}
+:root[data-theme=dark] .category-chip button:hover{background:#2f3432;color:#dbb6b3}
 
 /* Hand-tuned on top of the generated rules. */
 :root[data-theme=dark]{color-scheme:dark;background:#0d1411}

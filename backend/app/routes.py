@@ -347,6 +347,19 @@ def update_category(id):
     return {'id':id,'name':item.name}
 
 
+@api.delete('/categories/<int:id>')
+@authenticated
+def delete_category(id):
+    require_super()
+    item = db.get_or_404(Category,id)
+    # Tasks keep their history; they just lose the category.
+    Task.query.filter_by(category_id=id).update({'category_id':None})
+    db.session.delete(item)
+    audit('category',id,'deleted')
+    db.session.commit()
+    return {'deleted':True}
+
+
 def set_assignees(task, ids):
     users = [db.get_or_404(User,id) for id in ids]
     if not users or len(set(ids)) != len(ids):
