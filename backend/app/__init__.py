@@ -90,7 +90,13 @@ def create_app(test_config=None):
     @app.errorhandler(IntegrityError)
     def constraint_error(error):
         db.session.rollback()
-        return jsonify(error={'code': 409, 'message': 'A unique value already exists or a database constraint failed.'}), 409
+        # Postgres and SQLite both name the failed constraint or column in the driver message.
+        detail = str(error.orig)
+        known = [('user_role', 'This role is not allowed by the database yet. Run the latest database migration (flask db upgrade).'),
+                 ('employee_id', 'This employee ID is already used.'), ('username', 'This username is already used.'),
+                 ('email', 'This email is already used.')]
+        message = next((text for key, text in known if key in detail), 'A unique value already exists or a database constraint failed.')
+        return jsonify(error={'code': 409, 'message': message}), 409
 
     @app.errorhandler(Exception)
     def server_error(error):
