@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Download, FileText, Image as ImageIcon, Link2, MoreHorizontal, Play, Plus, Upload, X } from 'lucide-react';
 import { api, useAll, useApi, queryString } from './api';
 import { useLanguage } from './i18n';
-import { Badge, Empty, ErrorBox, LocalDate, Loading, PageHead, useToast } from './ui';
+import { Badge, Empty, ErrorBox, LocalDate, Loading, PageHead, formatDate, useToast } from './ui';
 import { shrinkImage } from './photos';
 import type { Attachment, Named, Page, Task, User } from './types';
 
@@ -36,7 +36,8 @@ export function Portfolio() {
  // Keep showing the current cards while a filter or "load more" fetches the next page.
  const q = useQuery({queryKey:[path], queryFn:() => api<PortfolioPage>(path), placeholderData:keepPreviousData});
  const departments = useApi<{items:Named[]}>('/departments');const users = useAll<User>('/employees');
- const monthLabel = new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-GB', {month:'long', year:'numeric'}).format(month);
+ // Mid-month so no timezone shift can move the label into a neighbouring month.
+ const monthLabel = formatDate(new Date(month.getFullYear(), month.getMonth(), 15), lang, {monthOnly:true});
  const s = q.data?.summary;const growth = s ? s.total - s.previous_total : 0;
  const fromDepartments = (n:number) => `${t('From')} ${n} ${t('departments')}`;
  return <>

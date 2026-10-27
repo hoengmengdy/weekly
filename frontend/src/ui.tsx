@@ -23,7 +23,17 @@ export function Progress({value}:{value:number}) {return <div className="progres
 export function Pager({data,onChange}:{data:Page<unknown>;onChange:(page:number)=>void}) {const {t}=useLanguage();return <div className="pager"><span>{data.total} · {data.page} / {Math.max(data.pages,1)}</span><div className="actions"><button className="btn" disabled={data.page<=1} onClick={()=>onChange(data.page-1)}><ChevronLeft size={15}/>{t('Previous')}</button><button className="btn" disabled={data.page>=data.pages} onClick={()=>onChange(data.page+1)}>{t('Next')}<ChevronRight size={15}/></button></div></div>;}
 export function Card({title,children,action}:{title?:string;children:ReactNode;action?:ReactNode}) {const {t}=useLanguage();return <section className="card">{title&&<div className="card-head"><h2>{t(title)}</h2>{action}</div>}{children}</section>;}
 export function Back({to}:{to:string}) {const {t}=useLanguage();return <Link className="back" to={to}><ChevronLeft size={16}/>{t('Back')}</Link>;}
-export function LocalDate({value,withTime=false}:{value:string;withTime?:boolean}) {const {lang}=useLanguage();return <>{new Intl.DateTimeFormat(lang==='km'?'km-KH':'en-GB',{timeZone:'Asia/Phnom_Penh',dateStyle:'medium',...(withTime?{timeStyle:'short' as const}:{})}).format(new Date(value.length===10?value+'T00:00:00+07:00':value))}</>;}
+const KM_MONTHS=['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+const kmDigits=(text:string)=>text.replace(/\d/g,d=>'០១២៣៤៥៦៧៨៩'[Number(d)]);
+// Browsers often ship without Khmer date data and silently fall back to English, so Khmer dates are built by hand.
+export function formatDate(value:string|Date,lang:string,{withTime=false,monthOnly=false}={}) {
+ const date=typeof value==='string'?new Date(value.length===10?value+'T00:00:00+07:00':value):value;
+ if(lang!=='km')return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Phnom_Penh',...(monthOnly?{month:'long' as const,year:'numeric' as const}:{dateStyle:'medium' as const,...(withTime?{timeStyle:'short' as const}:{})})}).format(date);
+ const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Phnom_Penh',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).map(x=>[x.type,x.value]));
+ const month=`${KM_MONTHS[Number(p.month)-1]} ${p.year}`;
+ return kmDigits(monthOnly?month:`${Number(p.day)} ${month}${withTime?`, ${p.hour}:${p.minute}`:''}`);
+}
+export function LocalDate({value,withTime=false}:{value:string;withTime?:boolean}) {const {lang}=useLanguage();return <>{formatDate(value,lang,{withTime})}</>;}
 export interface FieldSpec {name:string;label:string;type?:string;required?:boolean;options?:{value:string;label:string}[];wide?:boolean;hint?:string;readOnly?:boolean;min?:number;max?:number;step?:string;placeholder?:string;newRow?:boolean}
 export function DataForm({fields,initial={},schema,submit='Save',onSave,children}:{fields:FieldSpec[];initial?:Record<string,unknown>;schema?:z.ZodType<Record<string,unknown>>;submit?:string;onSave:(data:Record<string,unknown>)=>Promise<void>;children?:ReactNode}) {
  const {t}=useLanguage();const [error,setError]=useState<unknown>();
