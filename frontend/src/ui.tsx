@@ -24,13 +24,13 @@ export function Pager({data,onChange}:{data:Page<unknown>;onChange:(page:number)
 export function Card({title,children,action}:{title?:string;children:ReactNode;action?:ReactNode}) {const {t}=useLanguage();return <section className="card">{title&&<div className="card-head"><h2>{t(title)}</h2>{action}</div>}{children}</section>;}
 export function Back({to}:{to:string}) {const {t}=useLanguage();return <Link className="back" to={to}><ChevronLeft size={16}/>{t('Back')}</Link>;}
 export function LocalDate({value,withTime=false}:{value:string;withTime?:boolean}) {const {lang}=useLanguage();return <>{new Intl.DateTimeFormat(lang==='km'?'km-KH':'en-GB',{timeZone:'Asia/Phnom_Penh',dateStyle:'medium',...(withTime?{timeStyle:'short' as const}:{})}).format(new Date(value.length===10?value+'T00:00:00+07:00':value))}</>;}
-export interface FieldSpec {name:string;label:string;type?:string;required?:boolean;options?:{value:string;label:string}[];wide?:boolean;hint?:string;readOnly?:boolean;min?:number;max?:number;step?:string;placeholder?:string}
+export interface FieldSpec {name:string;label:string;type?:string;required?:boolean;options?:{value:string;label:string}[];wide?:boolean;hint?:string;readOnly?:boolean;min?:number;max?:number;step?:string;placeholder?:string;newRow?:boolean}
 export function DataForm({fields,initial={},schema,submit='Save',onSave,children}:{fields:FieldSpec[];initial?:Record<string,unknown>;schema?:z.ZodType<Record<string,unknown>>;submit?:string;onSave:(data:Record<string,unknown>)=>Promise<void>;children?:ReactNode}) {
  const {t}=useLanguage();const [error,setError]=useState<unknown>();
  const {register,handleSubmit,formState:{errors,isSubmitting}}=useForm<Record<string,unknown>>({defaultValues:initial,resolver:schema?zodResolver(schema):undefined});
  return <form className="data-form" onSubmit={handleSubmit(async values=>{setError(undefined);try{await onSave(values);}catch(e){setError(e);}})}>
   {error!==undefined&&<div className="full"><ErrorBox error={error}/></div>}
-  {fields.map(f=><div className={`field ${f.wide?'full':''}`} key={f.name}><label htmlFor={f.name}>{t(f.label)}{f.required&&<span className="required"> *</span>}</label>
+  {fields.map(f=><div className={`field ${f.wide?'full':''} ${f.newRow?'new-row':''}`} key={f.name}><label htmlFor={f.name}>{t(f.label)}{f.required&&<span className="required"> *</span>}</label>
    {f.type==='textarea'?<textarea id={f.name} rows={4} required={f.required} {...register(f.name)} readOnly={f.readOnly}/>:
     f.type==='select'||f.type==='multiselect'?<select id={f.name} multiple={f.type==='multiselect'} required={f.required} {...register(f.name)} disabled={f.readOnly}>{f.type!=='multiselect'&&<option value="">{t('Select')}</option>}{f.options?.map(o=><option key={o.value} value={o.value}>{t(o.label)}</option>)}</select>:
     f.type==='checkbox'?<input id={f.name} type="checkbox" {...register(f.name)}/>:
