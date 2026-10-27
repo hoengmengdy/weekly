@@ -21,6 +21,23 @@ def sqlite_foreign_keys(connection, record):
         connection.execute('PRAGMA foreign_keys=ON')
 
 
+def apply_migrations(app, directory):
+    from flask_migrate import upgrade
+    with app.app_context():
+        with db.engine.connect() as lock:
+            postgres = lock.dialect.name == 'postgresql'
+            # Concurrent cold starts wait here; later ones find the schema current.
+            if postgres:
+                lock.exec_driver_sql('SELECT pg_advisory_lock(727001)')
+            try:
+                upgrade(directory=str(directory))
+            except Exception:
+                app.logger.exception('Automatic database migration failed')
+            finally:
+                if postgres:
+                    lock.exec_driver_sql('SELECT pg_advisory_unlock(727001)')
+
+
 def create_app(test_config=None):
     root = Path(__file__).resolve().parents[1]
     load_dotenv(root / '.env')
@@ -82,6 +99,10 @@ def create_app(test_config=None):
     CORS(app, resources={r'/api/*': {'origins': [app.config['FRONTEND_URL']]}}, supports_credentials=True)
     from .routes import api
     app.register_blueprint(api, url_prefix='/api/v1')
+    # Vercel never runs `flask db upgrade` on deploy, so production applies
+    # pending migrations itself when it starts. Set AUTO_MIGRATE=false to opt out.
+    if production and not test_config and os.getenv('AUTO_MIGRATE', 'true').lower() == 'true':
+        apply_migrations(app, root / 'migrations')
 
     @app.errorhandler(HTTPException)
     def http_error(error):
