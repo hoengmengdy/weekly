@@ -35,6 +35,7 @@ class User(Base, db.Model):
     date_joined = db.Column(db.Date, nullable=False)
     profile_image_id = db.Column(db.String(80))
     session_version = db.Column(db.Integer, nullable=False, default=1)
+    telegram_chat_id = db.Column(db.String(40))
     __table_args__ = (db.CheckConstraint("role IN ('super_admin','admin','manager','employee','DGT')", name='user_role'),)
 
 

@@ -12,7 +12,8 @@ from flask_wtf.csrf import generate_csrf
 from sqlalchemy import or_
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from .extensions import db, limiter
+from .extensions import db, limiter, csrf
+from . import telegram
 from .models import *
 from .schemas import *
 from .services import *
@@ -61,6 +62,57 @@ def logout():
 @authenticated
 def me():
     return user_json(g.user)
+
+
+@api.post('/auth/telegram/link')
+@authenticated
+def telegram_link():
+    if not telegram.configured():
+        abort(503, description='Telegram is not set up yet. Ask the super admin to add TELEGRAM_BOT_TOKEN.')
+    try:
+        # Registering the webhook here keeps setup to a single setting; Telegram treats a repeat as a no-op.
+        telegram.call('setWebhook', url=telegram.public_url('/api/v1/telegram/webhook'),
+                      secret_token=telegram.webhook_secret(), allowed_updates=['message'])
+        bot = telegram.call('getMe')['result']['username']
+    except Exception:
+        current_app.logger.warning('Telegram setup failed', exc_info=True)
+        abort(502, description='Could not reach Telegram. Check TELEGRAM_BOT_TOKEN and try again.')
+    return {'url': f'https://t.me/{bot}?start={telegram.link_code(g.user.id)}'}
+
+
+@api.delete('/auth/telegram')
+@authenticated
+def telegram_unlink():
+    g.user.telegram_chat_id = None
+    audit('user',g.user.id,'telegram_disconnected')
+    db.session.commit()
+    return user_json(g.user)
+
+
+@api.post('/telegram/webhook')
+@csrf.exempt
+@limiter.exempt
+def telegram_webhook():
+    if not telegram.configured() or request.headers.get('X-Telegram-Bot-Api-Secret-Token') != telegram.webhook_secret():
+        abort(403)
+    message = (request.get_json(silent=True) or {}).get('message') or {}
+    text = message.get('text') or ''
+    chat_id = (message.get('chat') or {}).get('id')
+    if not chat_id or not text.startswith('/start'):
+        return {'ok': True}
+    user_id = telegram.read_link_code(text.removeprefix('/start').strip())
+    user = db.session.get(User, user_id) if user_id else None
+    if user and user.active:
+        user.telegram_chat_id = str(chat_id)
+        db.session.commit()
+        reply = f'✅ សួស្តី {user.full_name}! Telegram បានភ្ជាប់ជាមួយ Workday។ អ្នកនឹងទទួលបានសារនៅពេលមានការងារថ្មី។'
+    else:
+        reply = 'Link នេះផុតកំណត់ ឬមិនត្រឹមត្រូវ។ សូមចុច «ភ្ជាប់ Telegram» ម្តងទៀតក្នុងទំព័រ ប្រវត្តិរូប និងការកំណត់។'
+    try:
+        telegram.call('sendMessage', chat_id=chat_id, text=reply)
+    except Exception:
+        current_app.logger.warning('Telegram reply failed', exc_info=True)
+    return {'ok': True}
 
 
 @api.patch('/auth/profile')
@@ -311,6 +363,17 @@ def set_assignees(task, ids):
         if u.id not in previous:
             task.assignments.append(TaskAssignment(user_id=u.id))
             notify(u.id,f'New task assigned: {task.title}',f'/tasks/{task.id}')
+            if u.id != g.user.id:
+                telegram.queue(u,task_message(task))
+
+
+PRIORITY_KM = {'Low':'ទាប','Medium':'មធ្យម','High':'ខ្ពស់','Urgent':'បន្ទាន់'}
+
+
+def task_message(task):
+    return '\n'.join([f'📌 ការងារថ្មី: {task.title}', f'កាលកំណត់: {task.deadline:%d/%m/%Y}',
+                      f'អាទិភាព: {PRIORITY_KM.get(task.priority, task.priority)}', f'ដាក់ដោយ: {g.user.full_name}',
+                      telegram.public_url(f'/tasks/{task.id}')])
 
 
 def apply_task(task,data):

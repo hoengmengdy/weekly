@@ -168,6 +168,7 @@
 :root[data-theme=dark] .work-foot{border-top:1px solid #393e3b}
 :root[data-theme=dark] .work-foot small{color:#a3b4ab}
 :root[data-theme=dark] .badge.pending{background:#362f1e;color:#d4c7a6}
+:root[data-theme=dark] .badge.connected{background:#233029;color:#b5c2bb}
 :root[data-theme=dark] .portfolio-more{color:#a4b4ac}
 :root[data-theme=dark] .pending-count{background:var(--gold);color:#e6ebe9}
 :root[data-theme=dark] .portfolio-scrim{background:#0d1a1399}

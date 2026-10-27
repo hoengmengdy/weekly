@@ -122,7 +122,8 @@ def iso(value):
 
 def user_json(user):
     return {key: getattr(user, key) for key in ('id','employee_id','full_name','username','email','phone','position','department_id','manager_id','role','active','profile_image_id')} | {
-        'department': user.department.name if user.department else None, 'date_joined': iso(user.date_joined)}
+        'department': user.department.name if user.department else None, 'date_joined': iso(user.date_joined),
+        'telegram_connected': bool(user.telegram_chat_id)}
 
 
 def task_json(task, detail=False):

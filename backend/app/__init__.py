@@ -77,6 +77,7 @@ def create_app(test_config=None):
         MAIL_SERVER=os.getenv('MAIL_SERVER'), MAIL_PORT=int(os.getenv('MAIL_PORT', '587')),
         MAIL_USERNAME=os.getenv('MAIL_USERNAME'), MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
         MAIL_FROM=os.getenv('MAIL_FROM', ''), MAIL_USE_TLS=os.getenv('MAIL_USE_TLS', 'true') == 'true',
+        TELEGRAM_BOT_TOKEN=os.getenv('TELEGRAM_BOT_TOKEN', ''),
     )
     if test_config:
         app.config.update(test_config)
@@ -98,7 +99,9 @@ def create_app(test_config=None):
     limiter.init_app(app)
     CORS(app, resources={r'/api/*': {'origins': [app.config['FRONTEND_URL']]}}, supports_credentials=True)
     from .routes import api
+    from . import telegram
     app.register_blueprint(api, url_prefix='/api/v1')
+    app.after_request(telegram.flush)
     # Vercel never runs `flask db upgrade` on deploy, so production applies
     # pending migrations itself when it starts. Set AUTO_MIGRATE=false to opt out.
     if production and not test_config and os.getenv('AUTO_MIGRATE', 'true').lower() == 'true':

@@ -1,11 +1,11 @@
 ﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Download, ArrowUpRight } from 'lucide-react';
+import { Bell, Download, ArrowUpRight, Send } from 'lucide-react';
 import { api, useApi, downloadExport, queryString } from './api';
 import { useAuth } from './auth';
 import { useLanguage } from './i18n';
 import { Filters, useFilters } from './filters';
-import { PageHead, Card, Empty, ErrorBox, Loading, Pager, DataForm, LocalDate, Progress, useToast } from './ui';
+import { PageHead, Card, Badge, Empty, ErrorBox, Loading, Pager, DataForm, LocalDate, Progress, useToast } from './ui';
 import type { Metrics, Notice, Page, User } from './types';
 export function Analytics() {
  const {t}=useLanguage();const {values,set}=useFilters();const q=useApi<Metrics>(`/analytics/performance?${queryString(values)}`);const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);const data=q.data;
@@ -19,7 +19,7 @@ function MarkRead({id,onDone}:{id:number;onDone:()=>void}) {const {t}=useLanguag
 export function Settings() {
  const {user}=useAuth();const {t}=useLanguage();const toast=useToast();const settings=useApi<{company_name:string;allow_overnight:boolean;max_upload_bytes:number}>('/settings');const [error,setError]=useState<unknown>();
  if(!user)return null;
- return <><PageHead title="Profile & settings"/><div className="settings-grid"><Card title="Employee"><div className="profile-summary"><span className="avatar large">{user.profile_image_id?<img src={`/api/v1/auth/profile-image?v=${user.profile_image_id}`} alt={user.full_name}/>:user.full_name[0]}</span><div><strong>{user.full_name}</strong><small>{user.email}</small></div></div>{error!==undefined&&<ErrorBox error={error}/>}<div className="profile-upload"><label>{t('Profile image')}<input type="file" accept=".png,.jpg,.jpeg" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const form=new FormData();form.append('file',file);try{await api<User>('/auth/profile-image','POST',form);toast(t('Saved successfully'));}catch(err){setError(err);}}}/></label></div><DataForm fields={[{name:'full_name',label:'Full name',required:true},{name:'phone',label:'Phone',type:'tel'},{name:'position',label:'Position'}]} initial={{full_name:user.full_name,phone:user.phone,position:user.position}} onSave={async values=>{await api('/auth/profile','PATCH',values);toast(t('Saved successfully'));}}/></Card><Card title="Change password"><DataForm fields={[{name:'current_password',label:'Current password',type:'password',required:true,wide:true},{name:'new_password',label:'New password',type:'password',required:true,wide:true,hint:'12 or more characters'}]} submit="Change password" onSave={async values=>{await api('/auth/change-password','POST',values);toast(t('Saved successfully'));}}/></Card></div>{user.role==='super_admin'&&<Card title="System settings">{settings.error?<ErrorBox error={settings.error}/>:settings.data?<DataForm fields={[{name:'company_name',label:'Company name',required:true}]} initial={{company_name:settings.data.company_name}} onSave={async values=>{await api('/settings','PATCH',values);await settings.refetch();toast(t('Saved successfully'));}}/>:<Loading/>}<Link className="text-link padded-link" to="/audit">{t('Audit log')} <ArrowUpRight size={16}/></Link></Card>}</>;
+ return <><PageHead title="Profile & settings"/><div className="settings-grid"><Card title="Employee"><div className="profile-summary"><span className="avatar large">{user.profile_image_id?<img src={`/api/v1/auth/profile-image?v=${user.profile_image_id}`} alt={user.full_name}/>:user.full_name[0]}</span><div><strong>{user.full_name}</strong><small>{user.email}</small></div></div>{error!==undefined&&<ErrorBox error={error}/>}<div className="profile-upload"><label>{t('Profile image')}<input type="file" accept=".png,.jpg,.jpeg" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const form=new FormData();form.append('file',file);try{await api<User>('/auth/profile-image','POST',form);toast(t('Saved successfully'));}catch(err){setError(err);}}}/></label></div><DataForm fields={[{name:'full_name',label:'Full name',required:true},{name:'phone',label:'Phone',type:'tel'},{name:'position',label:'Position'}]} initial={{full_name:user.full_name,phone:user.phone,position:user.position}} onSave={async values=>{await api('/auth/profile','PATCH',values);toast(t('Saved successfully'));}}/></Card><Card title="Change password"><DataForm fields={[{name:'current_password',label:'Current password',type:'password',required:true,wide:true},{name:'new_password',label:'New password',type:'password',required:true,wide:true,hint:'12 or more characters'}]} submit="Change password" onSave={async values=>{await api('/auth/change-password','POST',values);toast(t('Saved successfully'));}}/></Card><TelegramCard connected={!!user.telegram_connected}/></div>{user.role==='super_admin'&&<Card title="System settings">{settings.error?<ErrorBox error={settings.error}/>:settings.data?<DataForm fields={[{name:'company_name',label:'Company name',required:true}]} initial={{company_name:settings.data.company_name}} onSave={async values=>{await api('/settings','PATCH',values);await settings.refetch();toast(t('Saved successfully'));}}/>:<Loading/>}<Link className="text-link padded-link" to="/audit">{t('Audit log')} <ArrowUpRight size={16}/></Link></Card>}</>;
 }
 export function Audit() {
  const {t}=useLanguage();const {values,set}=useFilters();const q=useApi<Page<{id:number;actor_id:number;entity:string;entity_id:number;action:string;details:Record<string,unknown>;created_at:string}>>(`/audit-logs?${queryString(values)}`);
@@ -27,3 +27,15 @@ export function Audit() {
 }
 export function Missing({denied=false}:{denied?:boolean}) {const {t}=useLanguage();return <div className="missing"><span>{denied?'403':'404'}</span><h1>{t(denied?'Access denied':'Page not found')}</h1>{denied&&<p className="muted">{t('Your role does not allow access to this page.')}</p>}<Link className="btn primary" to="/">{t('Go to dashboard')}</Link></div>;}
 
+
+function TelegramCard({connected}:{connected:boolean}) {
+ const {t}=useLanguage();const toast=useToast();const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();
+ const connect=async()=>{
+  // Open the tab inside the click so pop-up blockers allow it, then point it at the bot.
+  const tab=window.open('','_blank');setBusy(true);setError(undefined);
+  try{const {url}=await api<{url:string}>('/auth/telegram/link','POST',{});if(tab)tab.location.href=url;else window.location.href=url;}
+  catch(e){tab?.close();setError(e);}finally{setBusy(false);}
+ };
+ const disconnect=async()=>{setBusy(true);try{await api('/auth/telegram','DELETE');toast(t('Telegram disconnected'));}catch(e){setError(e);}finally{setBusy(false);}};
+ return <Card title="Telegram"><div className="telegram-card"><p className="muted">{t(connected?'Telegram is connected. You get a message when a new task is assigned to you.':'Connect Telegram to get a message when a new task is assigned to you.')}</p>{!connected&&<p className="muted">{t('After you press Start in Telegram, come back to this page.')}</p>}{error!==undefined&&<ErrorBox error={error}/>}{connected?<div className="actions"><Badge value="Connected"/><button className="btn" disabled={busy} onClick={()=>void disconnect()}>{t('Disconnect')}</button></div>:<button className="btn primary" disabled={busy} onClick={()=>void connect()}><Send size={16}/>{t(busy?'Loading':'Connect Telegram')}</button>}</div></Card>;
+}

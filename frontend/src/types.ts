@@ -1,7 +1,7 @@
 export type Role = 'super_admin'|'admin'|'manager'|'employee'|'DGT';
 export const isStaff=(role?:Role)=>role==='employee'||role==='DGT';
 export const roleLabel=(role:string)=>role==='DGT'?'Digital':role.replace('_',' ');
-export interface User {id:number; employee_id:string; full_name:string; username:string; email:string; phone:string; position:string; department_id:number|null; department:string|null; manager_id:number|null; role:Role; active:boolean; date_joined:string; profile_image_id:string|null}
+export interface User {id:number; employee_id:string; full_name:string; username:string; email:string; phone:string; position:string; department_id:number|null; department:string|null; manager_id:number|null; role:Role; active:boolean; date_joined:string; profile_image_id:string|null; telegram_connected?:boolean}
 export interface Named {id:number; name:string; description?:string}
 export interface Page<T> {items:T[]; total:number; page:number; pages:number; per_page:number}
 export interface Attachment {id:number; filename:string; size:number; url:string; mime?:string}
