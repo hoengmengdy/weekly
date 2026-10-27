@@ -182,9 +182,15 @@ def apply_report(report, data):
             abort(422, description='Overnight work is disabled by system policy.')
         end += timedelta(days=1)
     values['total_hours'] = round((end-start).total_seconds()/3600, 2)
-    # Progress follows the work links: each link is 1/15, so 15 links (the maximum) is 100%.
-    links = [line for line in data.evidence_url.splitlines() if line.strip()]
-    values['progress'] = round(min(len(links), WORK_LINK_TARGET) / WORK_LINK_TARGET * 100, 2)
+    owner = report.user or db.session.get(User, report.user_id)
+    if owner.role == 'DGT':
+        # Digital staff post no work links; progress is completed against target instead.
+        target = data.quantity_target
+        values['progress'] = round(min(data.quantity_completed / target, 1) * 100, 2) if target else 0
+    else:
+        # Progress follows the work links: each link is 1/15, so 15 links (the maximum) is 100%.
+        links = [line for line in data.evidence_url.splitlines() if line.strip()]
+        values['progress'] = round(min(len(links), WORK_LINK_TARGET) / WORK_LINK_TARGET * 100, 2)
     for key, value in values.items():
         setattr(report, key, value)
 

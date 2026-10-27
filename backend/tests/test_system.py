@@ -18,6 +18,17 @@ def test_pasted_work_links_normalize_bullets_and_missing_protocol(client,sign_in
     assert client.get(BASE+f'/reports/{created.json["id"]}').json['evidence_url'].splitlines()==expected
 
 
+def test_digital_report_progress_follows_quantity_not_links(client,sign_in,report_data,app):
+    with app.app_context():
+        db.session.get(User,3).role='DGT'
+        db.session.commit()
+    sign_in(3)
+    created=client.post(BASE+'/reports',json=report_data)
+    assert created.status_code==201,created.json
+    assert created.json['progress']==80
+    assert client.patch(BASE+f'/reports/{created.json["id"]}',json={'quantity_completed':12}).json['progress']==100
+
+
 def test_fifteen_work_links_preserved_through_edit_review_and_exports(client,sign_in,report_data):
     sign_in(3)
     links=[f'https://www.facebook.com/example/posts/{index}' for index in range(15)]
