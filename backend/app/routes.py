@@ -185,7 +185,7 @@ def validate_employee(data, existing=None):
             abort(422, description='Manager must be an active manager or administrator.')
     if existing and existing.id == g.user.id and (not data.active or data.role != 'super_admin'):
         abort(409, description='You cannot deactivate or demote your own super admin account.')
-    if existing and existing.role in ('manager','admin','super_admin') and data.role == 'employee' and User.query.filter_by(manager_id=existing.id).first():
+    if existing and existing.role in ('manager','admin','super_admin') and data.role in STAFF and User.query.filter_by(manager_id=existing.id).first():
         abort(409, description='Reassign this manager’s employees before changing their role.')
 
 
@@ -416,7 +416,7 @@ def task_status(id):
     transitions = {'Assigned':['Accepted','Cancelled'],'Accepted':['In Progress','Cancelled'],
                   'In Progress':['Pending Review','Cancelled'],'Pending Review':['Completed','Revision Requested','Cancelled'],
                   'Revision Requested':['In Progress','Pending Review','Cancelled'],'Completed':[],'Cancelled':[]}
-    employee = g.user.role == 'employee'
+    employee = g.user.role in STAFF
     if employee and data.status in ('Completed','Cancelled','Revision Requested'):
         abort(403, description='Only a manager can review or cancel tasks.')
     if not employee:
@@ -450,7 +450,7 @@ def task_status(id):
 def history(id):
     task_or_404(id)
     return {'items':[{'id':a.id,'action':a.action,'actor_id':a.actor_id,'created_at':iso(a.created_at),
-                      'details':a.details if g.user.role != 'employee' else {k:v for k,v in a.details.items() if k in ('from','to','progress')}}
+                      'details':a.details if g.user.role not in STAFF else {k:v for k,v in a.details.items() if k in ('from','to','progress')}}
                      for a in AuditLog.query.filter_by(entity='task',entity_id=id).order_by(AuditLog.id.desc())]}
 
 

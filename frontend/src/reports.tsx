@@ -10,7 +10,7 @@ import { Filters, useFilters } from './filters';
 import { PageHead, Card, Badge, Progress, Pager, Empty, Loading, ErrorBox, DataForm, Back, LocalDate, SelectFilter, useToast, type FieldSpec } from './ui';
 import { Attachments, WorkLinks } from './tasks';
 import { PhotoPicker, uploadPhotos } from './photos';
-import type { Report, Task, Page } from './types';
+import { isStaff, type Report, type Task, type Page } from './types';
 
 export function ReportList({approval=false}:{approval?:boolean}) {
  const {t}=useLanguage();const {values,set}=useFilters(approval?{report_status:'Submitted'}:{});const q=useApi<Page<Report>>(`/reports?${queryString(values)}`);
@@ -28,7 +28,7 @@ export function ReportForm() {
 export function ReportDetails() {
  const {id}=useParams();const {user}=useAuth();const nav=useNavigate();const {t}=useLanguage();const toast=useToast();const q=useApi<Report>(`/reports/${id}`);const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();
  if(q.error)return <ErrorBox error={q.error}/>;if(!q.data)return <Loading/>;const r=q.data;
- const own=r.user_id===user?.id;const editable=own&&['Draft','Revision Requested'].includes(r.status);const review=!own&&user?.role!=='employee'&&['Submitted','Under Review'].includes(r.status);
+ const own=r.user_id===user?.id;const editable=own&&['Draft','Revision Requested'].includes(r.status);const review=!own&&!isStaff(user?.role)&&['Submitted','Under Review'].includes(r.status);
  const deletable=(own&&r.status==='Draft')||['admin','super_admin'].includes(user?.role||'');
  const remove=async()=>{if(!window.confirm(t('Delete this report? This cannot be undone.')))return;setBusy(true);setError(undefined);try{await api(`/reports/${id}`,'DELETE');toast(t('Report deleted'));nav('/reports');}catch(e){setError(e);setBusy(false);}};
  const act=async(action:string,body:unknown={})=>{setBusy(true);setError(undefined);try{await api(`/reports/${id}/${action}`,'POST',body);await q.refetch();toast(t('Saved successfully'));}catch(e){setError(e);}finally{setBusy(false);}};

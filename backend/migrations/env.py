@@ -97,6 +97,11 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        # Batch migrations rebuild SQLite tables (drop + rename), which fails
+        # while foreign keys are enforced; the app turns them on per connection.
+        if connection.dialect.name == 'sqlite':
+            connection.exec_driver_sql('PRAGMA foreign_keys=OFF')
+            connection.commit()
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),

@@ -6,12 +6,12 @@ import { useLanguage } from './i18n';
 import { useApi, queryString } from './api';
 import { PageHead, Card, ErrorBox, Loading, Empty, Badge, LocalDate } from './ui';
 import { useFilters, Filters } from './filters';
-import type { Metrics } from './types';
+import { isStaff, type Metrics } from './types';
 export function Dashboard() {
- const {user}=useAuth();const {t}=useLanguage();const {values,set}=useFilters();const metrics=useApi<Metrics>(`/dashboard/${user?.role==='employee'?'employee':'manager'}?${queryString(values)}`);
+ const {user}=useAuth();const {t}=useLanguage();const {values,set}=useFilters();const metrics=useApi<Metrics>(`/dashboard/${isStaff(user?.role)?'employee':'manager'}?${queryString(values)}`);
  const d=metrics.data;
- return <><PageHead eyebrow="Overview" title={`${t('Welcome back')}, ${user?.full_name.split(' ')[0]||''}`} description="A clear view of your team’s work."><Link className="btn" to="/reports/new"><Plus size={17}/>{t('New report')}</Link>{user?.role!=='employee'&&<Link className="btn primary" to="/tasks/new"><Plus size={17}/>{t('New task')}</Link>}</PageHead><Filters values={values} set={set} extended/>{metrics.error?<ErrorBox error={metrics.error}/>:!d?<Loading/>:<><div className="stats-grid">{[
-  {label:user?.role==='employee'?'Assigned tasks':'Active employees',value:user?.role==='employee'?d.total_tasks:d.active_employees,icon:Users,tone:'blue',note:'Workspace'},
+ return <><PageHead eyebrow="Overview" title={`${t('Welcome back')}, ${user?.full_name.split(' ')[0]||''}`} description="A clear view of your team’s work."><Link className="btn" to="/reports/new"><Plus size={17}/>{t('New report')}</Link>{!isStaff(user?.role)&&<Link className="btn primary" to="/tasks/new"><Plus size={17}/>{t('New task')}</Link>}</PageHead><Filters values={values} set={set} extended/>{metrics.error?<ErrorBox error={metrics.error}/>:!d?<Loading/>:<><div className="stats-grid">{[
+  {label:isStaff(user?.role)?'Assigned tasks':'Active employees',value:isStaff(user?.role)?d.total_tasks:d.active_employees,icon:Users,tone:'blue',note:'Workspace'},
   {label:'Completed tasks',value:d.completed,icon:CheckCircle2,tone:'green',note:`${d.completion_rate}% ${t('Completion rate')}`},
   {label:'In progress',value:d.in_progress,icon:Clock3,tone:'gold',note:`${d.total_tasks} ${t('Assigned tasks')}`},
   {label:'Overdue tasks',value:d.overdue,icon:AlertCircle,tone:'red',note:'Upcoming deadlines'},

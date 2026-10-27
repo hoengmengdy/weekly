@@ -3,7 +3,7 @@ import re
 from typing import Literal, Annotated
 from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator, field_validator, StringConstraints, HttpUrl, TypeAdapter
 
-Roles = Literal['super_admin', 'admin', 'manager', 'employee']
+Roles = Literal['super_admin', 'admin', 'manager', 'employee', 'DGT']
 TaskStatus = Literal['Assigned', 'Accepted', 'In Progress', 'Pending Review', 'Revision Requested', 'Completed', 'Cancelled']
 
 

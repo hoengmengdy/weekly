@@ -35,12 +35,16 @@ def authenticated(fn):
     return wrapped
 
 
+# Roles with employee-level access: own tasks and reports only.
+STAFF = ('employee', 'DGT')
+
+
 def privileged():
     return g.user.role in ('super_admin', 'admin')
 
 
 def require_manager():
-    if g.user.role == 'employee':
+    if g.user.role in STAFF:
         abort(403, description='Manager permission required.')
 
 
@@ -50,7 +54,7 @@ def require_super():
 
 
 def can_manage(user):
-    return privileged() or (g.user.role == 'manager' and user.manager_id == g.user.id and user.role == 'employee')
+    return privileged() or (g.user.role == 'manager' and user.manager_id == g.user.id and user.role in STAFF)
 
 
 def scoped_users():
@@ -58,7 +62,7 @@ def scoped_users():
     if privileged():
         return query
     if g.user.role == 'manager':
-        return query.filter(or_(db.and_(User.manager_id == g.user.id, User.role == 'employee'), User.id == g.user.id))
+        return query.filter(or_(db.and_(User.manager_id == g.user.id, User.role.in_(STAFF)), User.id == g.user.id))
     return query.filter(User.id == g.user.id)
 
 
@@ -123,14 +127,14 @@ def user_json(user):
 
 def task_json(task, detail=False):
     assignments = task.assignments
-    if g.user.role == 'employee':
+    if g.user.role in STAFF:
         assignments = [a for a in assignments if a.user_id == g.user.id]
     data = {key: getattr(task, key) for key in ('id','title','description','category_id','department_id','creator_id','priority','status','completion_criteria','estimated_hours','archived','work_links')}
     data.update(start_date=iso(task.start_date), deadline=iso(task.deadline), created_at=iso(task.created_at),
                 progress=round(sum(a.progress for a in assignments) / len(assignments), 1) if assignments else 0,
                 overdue=task.deadline < today() and task.status not in ('Completed','Cancelled'),
                 assignments=[{'user_id': a.user_id, 'full_name': a.user.full_name, 'progress': a.progress} for a in assignments])
-    if g.user.role != 'employee':
+    if g.user.role not in STAFF:
         data['internal_notes'] = task.internal_notes
     if detail:
         from .models import Attachment, TaskComment
