@@ -136,6 +136,57 @@
 :root[data-theme=dark] summary{color:#b0bfb8}
 @media(max-width:760px){
 :root[data-theme=dark] .sidebar-scrim{background:#033a2077}}
+:root[data-theme=dark] .portfolio-stat{background:#252826}
+:root[data-theme=dark] .portfolio-stat small{color:#acbbb4}
+:root[data-theme=dark] .portfolio-stat strong{color:#dee4e1}
+:root[data-theme=dark] .portfolio-stat span,:root[data-theme=dark] .portfolio-stat .text-link{color:#a3b4ab}
+:root[data-theme=dark] .portfolio-stat.total{background:var(--navy)}
+:root[data-theme=dark] .portfolio-stat.total small,:root[data-theme=dark] .portfolio-stat.total span{color:#cfe3d7}
+:root[data-theme=dark] .portfolio-stat.total strong{color:#fff}
+:root[data-theme=dark] .portfolio-stat.poster{background:#3a3222}
+:root[data-theme=dark] .portfolio-stat.video{background:#292d2b}
+:root[data-theme=dark] .portfolio-stat.photo{background:#28332c}
+:root[data-theme=dark] .portfolio-stat.pending{background:#3d341e}
+:root[data-theme=dark] .portfolio-stat.pending strong{color:#e0d5be}
+:root[data-theme=dark] .portfolio-stat.pending .text-link{color:#e0d5be}
+:root[data-theme=dark] .portfolio-tabs button{border:1px solid #414744;background:#1c1f1d;color:#c4cfca}
+:root[data-theme=dark] .portfolio-tabs button.active{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme=dark] .portfolio-filters small{color:#acbbb4}
+:root[data-theme=dark] .work-thumb{background:#252826;color:var(--navy)}
+:root[data-theme=dark] .work-thumb.poster{background:#3a3222}
+:root[data-theme=dark] .work-thumb.video{background:#18201c}
+:root[data-theme=dark] .work-thumb.photo{background:#2b3730}
+:root[data-theme=dark] .play{background:var(--navy);color:#fff}
+:root[data-theme=dark] .thumb-icon{color:var(--navy)}
+:root[data-theme=dark] .work-kind{background:#1c1f1d;color:#dce2df}
+:root[data-theme=dark] .work-menu summary{background:#1c1f1d;color:#dce2df}
+:root[data-theme=dark] .work-menu>div{background:#1c1f1d;border:1px solid #3c413e;box-shadow:0 8px 24px #13273e1f}
+:root[data-theme=dark] .work-menu a:hover,:root[data-theme=dark] .work-menu button:hover{background:#252927}
+:root[data-theme=dark] .work-menu .danger{color:#d7b5ad}
+:root[data-theme=dark] .work-person{color:#acbbb4}
+:root[data-theme=dark] .work-chip{background:#233029;color:#badcca}
+:root[data-theme=dark] .work-foot{border-top:1px solid #393e3b}
+:root[data-theme=dark] .work-foot small{color:#a3b4ab}
+:root[data-theme=dark] .badge.pending{background:#362f1e;color:#d4c7a6}
+:root[data-theme=dark] .portfolio-more{color:#a4b4ac}
+:root[data-theme=dark] .pending-count{background:var(--gold);color:#e6ebe9}
+:root[data-theme=dark] .portfolio-scrim{background:#0d1a1399}
+:root[data-theme=dark] .portfolio-dialog{background:#1c1f1d;box-shadow:0 18px 60px #0d1a1340}
+:root[data-theme=dark] .dialog-body .field>span{color:#c4cfca}
+:root[data-theme=dark] .segmented{background:#292d2b}
+:root[data-theme=dark] .segmented button{color:#c4cfca}
+:root[data-theme=dark] .segmented button.active{background:#1c1f1d;color:#dce2df;box-shadow:0 1px 3px #13273e1a}
+:root[data-theme=dark] .dropzone{border:1.5px dashed #a9c4b4;background:#212a25}
+:root[data-theme=dark] .dropzone.over{border-color:var(--navy);background:#29352e}
+:root[data-theme=dark] .dropzone-icon{background:#2d3932;color:var(--navy)}
+:root[data-theme=dark] .dropzone u{color:var(--navy)}
+:root[data-theme=dark] .dropzone small{color:#a3b4ab}
+:root[data-theme=dark] .picked-file{border:1px solid #3c413e}
+:root[data-theme=dark] .picked-file small{color:#a3b4ab}
+:root[data-theme=dark] .kind-picker button{border:1px solid #414744;background:#1c1f1d;color:#c4cfca}
+:root[data-theme=dark] .kind-picker button.active{border-color:var(--navy);background:var(--navy);color:#fff}
+:root[data-theme=dark] .check-line{color:#c4cfca}
+:root[data-theme=dark] .dialog-foot{border-top:1px solid #393e3b}
 
 /* Hand-tuned on top of the generated rules. */
 :root[data-theme=dark]{color-scheme:dark;background:#0d1411}

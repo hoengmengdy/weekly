@@ -110,6 +110,26 @@ class ReportInput(Schema):
         return clean_work_links(value)
 
 
+class PortfolioInput(Schema):
+    title: str = Field(min_length=1, max_length=200)
+    kind: Literal['Poster', 'Video', 'Photo']
+    work_date: date
+    department_id: int | None = None
+    user_id: int | None = None
+    task_id: int | None = None
+    link: str = Field(default='', max_length=2100)
+    description: str = Field(default='', max_length=5000)
+    needs_approval: bool = False
+
+    @field_validator('link')
+    @classmethod
+    def valid_link(cls, value):
+        links = clean_work_links(value)
+        if '\n' in links:
+            raise ValueError('Add one link only')
+        return links
+
+
 class Feedback(Schema):
     feedback: str = Field(default='', max_length=10000)
 

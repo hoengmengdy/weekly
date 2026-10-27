@@ -126,6 +126,30 @@ class Attachment(Base, db.Model):
     data = db.deferred(db.Column(db.LargeBinary))
 
 
+class PortfolioItem(Base, db.Model):
+    """A finished poster, video or photo kept for the monthly report."""
+    __tablename__ = 'portfolio_items'
+    title = db.Column(db.String(200), nullable=False)
+    kind = db.Column(db.String(20), nullable=False)
+    work_date = db.Column(db.Date, nullable=False, index=True)
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
+    link = db.Column(db.Text, nullable=False, default='')
+    description = db.Column(db.Text, nullable=False, default='')
+    attachment_id = db.Column(db.Integer, db.ForeignKey('report_attachments.id'))
+    status = db.Column(db.String(20), nullable=False, default='Approved', index=True)
+    creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    department = db.relationship('Department')
+    user = db.relationship('User', foreign_keys=[user_id])
+    task = db.relationship('Task')
+    attachment = db.relationship('Attachment')
+    __table_args__ = (
+        db.CheckConstraint("kind IN ('Poster','Video','Photo')", name='portfolio_kind'),
+        db.CheckConstraint("status IN ('Pending','Approved')", name='portfolio_status'),
+    )
+
+
 class ReportReview(Base, db.Model):
     __tablename__ = 'report_reviews'
     report_id = db.Column(db.Integer, db.ForeignKey('daily_reports.id'), nullable=False, index=True)

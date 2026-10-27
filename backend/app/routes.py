@@ -707,7 +707,7 @@ def download(id):
         report_or_404(item.report_id)
     elif item.task_id:
         task_or_404(item.task_id)
-    elif item.owner_id != g.user.id:
+    elif item.owner_id != g.user.id and not (g.user.role == 'super_admin' and PortfolioItem.query.filter_by(attachment_id=item.id).first()):
         abort(404)
     inline = request.args.get('inline') == '1' and item.mime.startswith('image/')
     return send_attachment(item, as_attachment=not inline)
@@ -883,3 +883,158 @@ def export_reports(format):
     db.session.commit()
     stream.seek(0)
     return send_file(stream,mimetype=mime,as_attachment=True,download_name=f'work-reports-{today()}.{format}')
+
+
+PORTFOLIO_KINDS = ('Poster','Video','Photo')
+
+
+def portfolio_month():
+    value = request.args.get('month') or today().strftime('%Y-%m')
+    try:
+        start = datetime.strptime(value, '%Y-%m').date()
+    except ValueError:
+        abort(422, description='Invalid month')
+    end = (start + timedelta(days=32)).replace(day=1)
+    return start, end
+
+
+def portfolio_json(item):
+    return {'id':item.id,'title':item.title,'kind':item.kind,'work_date':iso(item.work_date),'status':item.status,
+            'department_id':item.department_id,'department':item.department.name if item.department else None,
+            'user_id':item.user_id,'employee_name':item.user.full_name if item.user else None,
+            'task_id':item.task_id,'task_title':item.task.title if item.task else None,
+            'link':item.link,'description':item.description,
+            'attachment':attachment_json(item.attachment) if item.attachment else None,'created_at':iso(item.created_at)}
+
+
+@api.get('/portfolio')
+@authenticated
+def portfolio():
+    require_super()
+    start, end = portfolio_month()
+    month = PortfolioItem.query.filter(PortfolioItem.work_date >= start, PortfolioItem.work_date < end)
+    previous_start = (start - timedelta(days=1)).replace(day=1)
+    rows = month.all()
+    summary = {'total':len(rows),'pending':sum(i.status == 'Pending' for i in rows),
+               'previous_total':PortfolioItem.query.filter(PortfolioItem.work_date >= previous_start, PortfolioItem.work_date < start).count(),
+               'kinds':{kind:{'count':sum(i.kind == kind for i in rows),
+                              'departments':len({i.department_id for i in rows if i.kind == kind and i.department_id})}
+                        for kind in PORTFOLIO_KINDS}}
+    query = month
+    if request.args.get('kind'):
+        query = query.filter(PortfolioItem.kind == request.args['kind'])
+    for param, column in [('department', PortfolioItem.department_id), ('employee', PortfolioItem.user_id), ('status', PortfolioItem.status)]:
+        if request.args.get(param):
+            query = query.filter(column == filter_value(param, column))
+    if request.args.get('q'):
+        term = f"%{request.args['q']}%"
+        query = query.filter(or_(PortfolioItem.title.ilike(term), PortfolioItem.description.ilike(term)))
+    return paginate(query.order_by(PortfolioItem.work_date.desc(), PortfolioItem.id.desc()), portfolio_json) | {'summary':summary}
+
+
+@api.post('/portfolio')
+@authenticated
+def create_portfolio_item():
+    require_super()
+    data = parse(PortfolioInput)
+    for model, id in [(Department, data.department_id), (User, data.user_id), (Task, data.task_id)]:
+        if id:
+            db.get_or_404(model, id)
+    item = PortfolioItem(**data.model_dump(exclude={'needs_approval'}), status='Pending' if data.needs_approval else 'Approved', creator_id=g.user.id)
+    db.session.add(item)
+    db.session.flush()
+    audit('portfolio', item.id, 'created', {'title':item.title,'kind':item.kind})
+    db.session.commit()
+    return portfolio_json(item), 201
+
+
+@api.post('/portfolio/<int:id>/file')
+@authenticated
+def portfolio_file(id):
+    require_super()
+    item = db.get_or_404(PortfolioItem, id)
+    file = request.files.get('file')
+    if not file:
+        abort(422, description='Select a file.')
+    filename,extension,raw,mime = validate_upload(file)
+    if extension not in ('.png','.jpg','.jpeg','.pdf'):
+        abort(422, description='Upload a JPG, PNG or PDF file. Add videos as a link.')
+    previous = item.attachment
+    item.attachment = Attachment(owner_id=g.user.id,filename=filename,storage_name=secrets.token_hex(24)+extension,
+                                 mime=mime,size=len(raw),data=raw)
+    if previous:
+        db.session.delete(previous)
+    audit('portfolio', id, 'file_added', {'filename':filename})
+    db.session.commit()
+    return portfolio_json(item)
+
+
+@api.post('/portfolio/<int:id>/approve')
+@authenticated
+def approve_portfolio_item(id):
+    require_super()
+    item = db.get_or_404(PortfolioItem, id)
+    item.status = 'Approved'
+    audit('portfolio', id, 'approved')
+    db.session.commit()
+    return portfolio_json(item)
+
+
+@api.delete('/portfolio/<int:id>')
+@authenticated
+def delete_portfolio_item(id):
+    require_super()
+    item = db.get_or_404(PortfolioItem, id)
+    attachment = item.attachment
+    db.session.delete(item)
+    if attachment:
+        db.session.delete(attachment)
+    audit('portfolio', id, 'deleted', {'title':item.title})
+    db.session.commit()
+    return {'deleted':id}
+
+
+@api.get('/exports/portfolio.pdf')
+@authenticated
+def export_portfolio():
+    require_super()
+    from xml.sax.saxutils import escape
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, KeepTogether
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    start, end = portfolio_month()
+    items = PortfolioItem.query.filter(PortfolioItem.work_date >= start, PortfolioItem.work_date < end,
+                                       PortfolioItem.status == 'Approved').order_by(PortfolioItem.work_date).all()
+    company = settings()['company_name']
+    pdfmetrics.registerFont(TTFont('WorkdayUnicode', current_app.config['PDF_FONT_PATH']))
+    styles = getSampleStyleSheet()
+    for style in styles.byName.values():
+        style.fontName = 'WorkdayUnicode'
+        style.shaping = 1
+        if hasattr(style, 'leading'):
+            style.leading = max(style.leading, style.fontSize*1.7)
+    counts = ' | '.join(f'{kind}: {sum(i.kind == kind for i in items)}' for kind in PORTFOLIO_KINDS)
+    story = [Paragraph(escape(company), styles['Heading2']), Paragraph(escape(f'Work portfolio {start:%m/%Y}'), styles['Heading3']),
+             Paragraph(escape(f'Total: {len(items)} | {counts}'), styles['Normal'])]
+    for item in items:
+        block = [Spacer(1, 14), Paragraph(escape(f'{item.kind} · {item.title}'), styles['Heading4'])]
+        details = [f'Date: {item.work_date:%d/%m/%Y}', f'Employee: {item.user.full_name}' if item.user else '',
+                   f'Department: {item.department.name}' if item.department else '', f'Task: {item.task.title}' if item.task else '',
+                   f'Link: {item.link}' if item.link else '', item.description]
+        block += [Paragraph(escape(line).replace('\n', '<br/>'), styles['Normal']) for line in details if line]
+        if item.attachment and item.attachment.mime.startswith('image/') and item.attachment.data:
+            picture = Image(io.BytesIO(item.attachment.data))
+            scale = min(8*cm / picture.imageWidth, 6*cm / picture.imageHeight)
+            picture.drawWidth, picture.drawHeight = picture.imageWidth*scale, picture.imageHeight*scale
+            picture.hAlign = 'LEFT'
+            block.append(picture)
+        story.append(KeepTogether(block))
+    stream = io.BytesIO()
+    SimpleDocTemplate(stream, pagesize=A4, title='Work portfolio', author=company).build(story)
+    audit('export', 0, 'portfolio_pdf', {'month':f'{start:%Y-%m}','count':len(items)})
+    db.session.commit()
+    stream.seek(0)
+    return send_file(stream, mimetype='application/pdf', as_attachment=True, download_name=f'work-portfolio-{start:%Y-%m}.pdf')
