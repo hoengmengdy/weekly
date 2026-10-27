@@ -1,0 +1,15 @@
+# Keep CLI deploys to the app source: no local environments, caches, secrets or backups.
+.venv*
+.pytest_cache
+__pycache__
+**/__pycache__
+**/node_modules
+.env*
+!.env.example
+**/.env
+backups
+logs
+.qa
+.agents
+.claude
+**/instance
