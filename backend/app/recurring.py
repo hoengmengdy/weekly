@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from .extensions import db
 from .models import Task, User, TaskAssignment, DailyTaskOccurrence, Attachment, AuditLog
 from .services import today, notify, STAFF
+from . import telegram
 
 COPY_FIELDS = ('title', 'description', 'category_id', 'department_id', 'creator_id',
                'priority', 'completion_criteria', 'estimated_hours', 'internal_notes', 'work_links')
@@ -50,6 +51,7 @@ def generate_daily_tasks(viewer=None):
         query = query.filter(or_(Task.creator_id == viewer.id,
             Task.assignments.any(TaskAssignment.user_id == viewer.id)))
     created = 0
+    alerts = []
     for source in query.order_by(Task.id).all():
         creator = db.session.get(User, source.creator_id)
         if not creator or not creator.active or creator.role in STAFF:
@@ -77,6 +79,7 @@ def generate_daily_tasks(viewer=None):
                 db.session.add(AuditLog(actor_id=creator.id, entity='task', entity_id=task.id,
                     action='daily_task_created', details={'source_task_id': source.id, 'run_date': day.isoformat()}))
             created += 1
+            alerts += [(user, task, creator) for user in users]
         except IntegrityError:
             # Losing the unique-date race rolls back the entire copied task,
             # assignments, attachments and notices, leaving the caller usable.
@@ -84,4 +87,7 @@ def generate_daily_tasks(viewer=None):
                 raise
     if created:
         db.session.commit()
+        # Only after commit, so a rolled-back copy never reaches Telegram.
+        for user, task, creator in alerts:
+            telegram.queue(user, telegram.task_message(task, creator))
     return created

@@ -376,17 +376,7 @@ def set_assignees(task, ids):
         if u.id not in previous:
             task.assignments.append(TaskAssignment(user_id=u.id))
             notify(u.id,f'New task assigned: {task.title}',f'/tasks/{task.id}')
-            if u.id != g.user.id:
-                telegram.queue(u,task_message(task))
-
-
-PRIORITY_KM = {'Low':'ទាប','Medium':'មធ្យម','High':'ខ្ពស់','Urgent':'បន្ទាន់'}
-
-
-def task_message(task):
-    return '\n'.join([f'📌 ការងារថ្មី: {task.title}', f'កាលកំណត់: {task.deadline:%d/%m/%Y}',
-                      f'អាទិភាព: {PRIORITY_KM.get(task.priority, task.priority)}', f'ដាក់ដោយ: {g.user.full_name}',
-                      telegram.public_url(f'/tasks/{task.id}')])
+            telegram.queue(u,telegram.task_message(task,g.user))
 
 
 def apply_task(task,data):

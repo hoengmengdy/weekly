@@ -1,0 +1,38 @@
+{
+  "01-opening": {
+    "duration": 8.088,
+    "sha256": "5de947f902059c95c12ad56389d9d6b5986de8693d32dd5b7009d5e6f820d389"
+  },
+  "02-login": {
+    "duration": 12.672,
+    "sha256": "abb698f7597e579b0e50cd66de379f07c859b50c8a6cec5d20185c2724124159"
+  },
+  "03-tasks": {
+    "duration": 14.52,
+    "sha256": "7441fe90761c8e8bdda466588f5e046604268be5d4bbb9e544de2baff78477dd"
+  },
+  "04-report": {
+    "duration": 15.864,
+    "sha256": "d341fe614f6214d7644bc9a2f59deb59366ecd032c1807834c2df3d7bab46205"
+  },
+  "05-evidence": {
+    "duration": 18.792,
+    "sha256": "ca4772c17d47c439cff56612adecf10eef420f43ed71c34400e0922c78b0d5a9"
+  },
+  "06-submit": {
+    "duration": 15.96,
+    "sha256": "be0d2fe87e524fc97af8834feea5e267f555b8a462c31dda634c96195c8fdce9"
+  },
+  "07-review": {
+    "duration": 15.552,
+    "sha256": "0e9b134ab7fd811b6f88970f6b34f6d6ce38b4f92284db48433c2f065f136e9f"
+  },
+  "08-manage": {
+    "duration": 19.8,
+    "sha256": "bb06f9d99729d5195ad5e95067c839e9c5d38a8bc31c3f1d2b926bacbf66f9b1"
+  },
+  "09-closing": {
+    "duration": 15.672,
+    "sha256": "5deb232a8a330c9a816656b0cbb4f0a3b67968dff1fd704a147db93643f8efeb"
+  }
+}

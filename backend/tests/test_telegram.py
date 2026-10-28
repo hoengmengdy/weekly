@@ -75,3 +75,37 @@ def test_new_assignment_is_sent_to_linked_users_only_after_saving(client,app,sig
     assert client.post(BASE+'/tasks',json=task(deadline='2000-01-01')).status_code==422
     assert client.patch(BASE+'/tasks/1',json={'title':'Renamed'}).status_code==200
     assert not [m for m,_ in bot if m=='sendMessage']
+
+
+def test_assigning_yourself_also_sends(client,app,sign_in,bot):
+    with app.app_context():
+        db.session.get(User,2).telegram_chat_id='222'
+        db.session.commit()
+    sign_in(2)
+    assert client.post(BASE+'/tasks',json=task(assigned_employee_ids=[2])).status_code==201
+    sent=[params for method,params in bot if method=='sendMessage']
+    assert len(sent)==1 and sent[0]['chat_id']=='222'
+
+
+def test_daily_copies_are_sent_once(client,app,sign_in,bot,monkeypatch):
+    from app import recurring
+    day=[date.today()]
+    monkeypatch.setattr(recurring,'today',lambda: day[0])
+    with app.app_context():
+        db.session.get(User,3).telegram_chat_id='555'
+        db.session.commit()
+    sign_in(2)
+    assert client.post(BASE+'/tasks',json=task(deadline=date.today().isoformat(),repeat_daily=True)).status_code==201
+    bot.clear()
+    day[0]+=timedelta(days=1)
+    sign_in(3)
+    assert client.get(BASE+'/tasks').status_code==200
+    assert client.get(BASE+'/tasks').status_code==200
+    sent=[params for method,params in bot if method=='sendMessage']
+    assert len(sent)==1 and sent[0]['chat_id']=='555'
+    assert 'Design launch poster' in sent[0]['text'] and 'Person 2' in sent[0]['text']
+    bot.clear()
+    day[0]+=timedelta(days=1)
+    with app.app_context():
+        assert recurring.generate_daily_tasks()==1
+    assert [p['chat_id'] for m,p in bot if m=='sendMessage']==['555']

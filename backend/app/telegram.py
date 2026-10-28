@@ -1,3 +1,4 @@
+
 """Telegram task alerts. A user links their chat once (Settings -> Connect Telegram),
 then new task assignments are pushed to it by the bot."""
 import hashlib
@@ -5,7 +6,7 @@ import hmac
 import json
 import time
 import urllib.request
-from flask import current_app, g, request
+from flask import current_app, g, has_request_context, request
 
 LINK_MAX_AGE = 3600
 
@@ -47,6 +48,9 @@ def read_link_code(code):
 
 
 def public_url(path):
+    # The background worker has no request; it links through FRONTEND_URL instead.
+    if not has_request_context():
+        return current_app.config['FRONTEND_URL'] + path
     base = request.host_url.rstrip('/')
     # Serverless hosts terminate TLS before the app; Telegram only accepts https.
     if not request.host.startswith(('localhost', '127.')):
@@ -54,9 +58,30 @@ def public_url(path):
     return base + path
 
 
+PRIORITY_KM = {'Low':'ទាប','Medium':'មធ្យម','High':'ខ្ពស់','Urgent':'បន្ទាន់'}
+
+
+def task_message(task, sender):
+    return '\n'.join([f'📌 ការងារថ្មី: {task.title}', f'កាលកំណត់: {task.deadline:%d/%m/%Y}',
+                      f'អាទិភាព: {PRIORITY_KM.get(task.priority, task.priority)}', f'ដាក់ដោយ: {sender.full_name}',
+                      public_url(f'/tasks/{task.id}')])
+
+
+def send(chat_id, text):
+    try:
+        call('sendMessage', chat_id=chat_id, text=text, disable_web_page_preview=True)
+    except Exception:
+        current_app.logger.warning('Telegram message could not be sent', exc_info=True)
+
+
 def queue(user, text):
-    if user.telegram_chat_id and configured():
+    """Send after the current request succeeds; outside a request (worker), send now."""
+    if not (user.telegram_chat_id and configured()):
+        return
+    if has_request_context():
         g.telegram_outbox = getattr(g, 'telegram_outbox', []) + [(user.telegram_chat_id, text)]
+    else:
+        send(user.telegram_chat_id, text)
 
 
 def flush(response):
@@ -64,8 +89,5 @@ def flush(response):
     outbox = g.pop('telegram_outbox', [])
     if response.status_code < 400:
         for chat_id, text in outbox:
-            try:
-                call('sendMessage', chat_id=chat_id, text=text, disable_web_page_preview=True)
-            except Exception:
-                current_app.logger.warning('Telegram message could not be sent', exc_info=True)
+            send(chat_id, text)
     return response
