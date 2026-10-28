@@ -36,6 +36,44 @@ On Linux/macOS substitute `.venv/bin/python` and `npm` for their Windows equival
 
 See [the user guide](docs/USER_GUIDE.md), [API reference](docs/API.md) and [database notes](docs/DATABASE.md).
 
+## Automatic daily employee tasks
+
+In **Tasks → New task** (or edit an existing original task), choose the employees
+and enable **Repeat daily / ធ្វើឡើងវិញរៀងរាល់ថ្ងៃ**. **Repeat until** is optional and
+inclusive. Each local day gets a fresh task, independent progress and reports;
+completion of the original does not stop its schedule. Use **Stop daily repeat**
+on the original to stop future copies. See [the user guide](docs/USER_GUIDE.md#repeat-a-task-every-day).
+
+Apply the additive migration before starting the updated app:
+
+```powershell
+.\.venv\Scripts\python.exe -m flask --app INDEx db upgrade -d backend/migrations
+```
+
+For Docker, the Compose file now includes a scheduler service. After rebuilding,
+start it alongside the web service:
+
+```powershell
+docker compose build
+docker compose run --rm web python -m flask --app INDEx db upgrade -d backend/migrations
+docker compose up -d web scheduler
+```
+
+The worker checks every minute and uses Cambodia time (UTC+7). On Windows,
+re-run `scripts/windows/install-autostart.ps1` to register **Workday Daily Tasks**.
+The job can also be run by an external scheduler with:
+
+```powershell
+.\.venv\Scripts\python.exe -m flask --app INDEx generate-daily-tasks
+```
+
+Vercel does not run the Docker worker: the authenticated app/task-list request
+creates today's assignments as a fallback. An external scheduler running the CLI
+is needed if assignments must appear while nobody opens the app. Offline days
+are not backfilled. A database unique constraint prevents duplicate occurrences
+on concurrent requests or retries. No existing tasks are made recurring by the
+migration; enable repetition explicitly on the intended task.
+
 ## Configuration
 
 `backend/.env` is optional for local development. Blank `DATABASE_URL`, `UPLOAD_FOLDER` and `PDF_FONT_PATH` use local defaults. The app creates an ignored local development secret under `backend/instance`; this is never a production secret.

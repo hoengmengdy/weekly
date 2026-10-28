@@ -177,4 +177,9 @@ def create_app(test_config=None):
         from .services import generate_deadline_notifications
         click.echo(f'{generate_deadline_notifications()} notifications created.')
 
+    @app.cli.command('generate-daily-tasks')
+    def generate_daily_tasks_command():
+        from .recurring import generate_daily_tasks
+        click.echo(f'{generate_daily_tasks()} daily tasks created.')
+
     return app

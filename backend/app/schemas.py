@@ -49,6 +49,8 @@ class TaskInput(Schema):
     estimated_hours: float = Field(default=0, ge=0, le=100000)
     internal_notes: str = Field(default='', max_length=10000)
     work_links: str = Field(default='', max_length=30734)
+    repeat_daily: bool = False
+    repeat_until: date | None = None
 
     @field_validator('work_links')
     @classmethod
@@ -59,6 +61,10 @@ class TaskInput(Schema):
     def dates(self):
         if self.deadline < self.start_date:
             raise ValueError('Deadline must be on or after start date')
+        if self.repeat_daily and self.repeat_until and self.repeat_until < self.start_date:
+            raise ValueError('Repeat until must be on or after start date')
+        if not self.repeat_daily:
+            self.repeat_until = None
         if len(set(self.assigned_employee_ids)) != len(self.assigned_employee_ids):
             raise ValueError('Duplicate assignees')
         return self

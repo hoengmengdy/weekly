@@ -16,7 +16,7 @@ services:
     build: .
     ports:
       - '127.0.0.1:5000:5000'
-    environment:
+    environment: &workday_environment
       FLASK_ENV: ${FLASK_ENV:-development}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in root .env}
       DATABASE_URL: postgresql+psycopg://workday:${POSTGRES_PASSWORD}@db:5432/workday
@@ -30,6 +30,16 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    volumes:
+      - uploads:/app/backend/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+  scheduler:
+    build: .
+    command: [python, backend/daily_tasks.py]
+    restart: unless-stopped
+    environment: *workday_environment
     volumes:
       - uploads:/app/backend/uploads
     depends_on:

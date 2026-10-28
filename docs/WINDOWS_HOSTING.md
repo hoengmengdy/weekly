@@ -120,13 +120,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\install-autostart.ps1
 Start-ScheduledTask "Workday Web"; Start-ScheduledTask "Workday Tunnel"
 ```
 
-This registers three Scheduled Tasks. They run as your account, at boot, without anyone signed in, and without storing your password:
+This registers four Scheduled Tasks. They run as your account, without anyone signed in and without storing your password:
 
 - **Workday Web**: Waitress, restarted every minute if it stops.
 - **Workday Tunnel**: the named tunnel, starting 30 s after boot.
 - **Workday Deadline Notices**: `flask notify-deadlines` every hour.
+- **Workday Daily Tasks**: `flask generate-daily-tasks` every minute, creating at most one task per repeating template each day (UTC+7). Re-run the installer after updating to register this job.
 
-Use `-NoTunnel` for a web-only setup and `-Uninstall` to remove all three. Also set *Settings → System → Power* so the PC **never sleeps**: a sleeping PC takes the site offline.
+Use `-NoTunnel` to skip the tunnel and `-Uninstall` to remove all four. Also set *Settings → System → Power* so the PC **never sleeps**: a sleeping PC takes the site offline.
 
 ## Day-to-day operations
 

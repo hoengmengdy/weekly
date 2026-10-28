@@ -31,6 +31,9 @@ def authenticated(fn):
             session.clear()
             abort(401, description='Please sign in.')
         g.user = user
+        if request.method == 'GET' and request.path in ('/api/v1/auth/me', '/api/v1/tasks'):
+            from .recurring import generate_daily_tasks
+            generate_daily_tasks(viewer=user)
         return fn(*args, **kwargs)
     return wrapped
 
@@ -131,7 +134,10 @@ def task_json(task, detail=False):
     if g.user.role in STAFF:
         assignments = [a for a in assignments if a.user_id == g.user.id]
     data = {key: getattr(task, key) for key in ('id','title','description','category_id','department_id','creator_id','priority','status','completion_criteria','estimated_hours','archived','work_links')}
+    occurrence = task.daily_occurrence
     data.update(start_date=iso(task.start_date), deadline=iso(task.deadline), created_at=iso(task.created_at),
+                repeat_daily=task.repeat_daily, repeat_until=iso(task.repeat_until),
+                recurrence_source_id=occurrence.source_task_id if occurrence else None,
                 progress=round(sum(a.progress for a in assignments) / len(assignments), 1) if assignments else 0,
                 overdue=task.deadline < today() and task.status not in ('Completed','Cancelled'),
                 assignments=[{'user_id': a.user_id, 'full_name': a.user.full_name, 'progress': a.progress} for a in assignments])

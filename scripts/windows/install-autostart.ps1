@@ -5,7 +5,7 @@
 #   .\scripts\windows\install-autostart.ps1 -Uninstall
 param([switch]$NoTunnel, [switch]$Uninstall)
 $ErrorActionPreference = 'Stop'
-$names = 'Workday Web', 'Workday Tunnel', 'Workday Deadline Notices'
+$names = 'Workday Web', 'Workday Tunnel', 'Workday Deadline Notices', 'Workday Daily Tasks'
 if ($Uninstall) {
     foreach ($n in $names) { Unregister-ScheduledTask -TaskName $n -Confirm:$false -ErrorAction SilentlyContinue }
     Write-Host 'Workday scheduled tasks removed.'
@@ -49,4 +49,10 @@ $notifySettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIf
 Register-ScheduledTask -Force -TaskName 'Workday Deadline Notices' -Principal $principal -Settings $notifySettings `
     -Trigger $hourly -Action $notify -Description 'Hourly due-soon/overdue notifications' | Out-Null
 Write-Host 'Registered: Workday Deadline Notices'
+$dailyTasks = New-ScheduledTaskAction -Execute (Join-Path $root '.venv\Scripts\python.exe') -WorkingDirectory $root `
+    -Argument '-m flask --app INDEx generate-daily-tasks'
+$everyMinute = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 1)
+Register-ScheduledTask -Force -TaskName 'Workday Daily Tasks' -Principal $principal -Settings $notifySettings `
+    -Trigger $everyMinute -Action $dailyTasks -Description 'Generate daily task assignments once per local day' | Out-Null
+Write-Host 'Registered: Workday Daily Tasks'
 Write-Host 'Start now without rebooting:  Start-ScheduledTask "Workday Web"; Start-ScheduledTask "Workday Tunnel"'

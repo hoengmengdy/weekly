@@ -390,6 +390,10 @@ def task_message(task):
 
 
 def apply_task(task,data):
+    if task.daily_occurrence is not None and data.repeat_daily:
+        abort(422, description='Change daily repetition on the original task, not a generated daily task.')
+    if task.status == 'Cancelled' and data.repeat_daily:
+        abort(422, description='Cancelled tasks cannot repeat. Create a new daily task instead.')
     if data.department_id:
         db.get_or_404(Department,data.department_id)
     if data.category_id:
@@ -460,6 +464,8 @@ def duplicate_task(id):
     task = Task(creator_id=g.user.id)
     values = {key:getattr(original,key) for key in TaskInput.model_fields if hasattr(original,key)}
     values['title'] = (original.title[:190]+' (copy)')
+    values['repeat_daily'] = False
+    values['repeat_until'] = None
     values['assigned_employee_ids'] = [a.user_id for a in original.assignments]
     data = parse(TaskInput,values)
     apply_task(task,data)
@@ -477,6 +483,8 @@ def archive_task(id):
     task = task_or_404(id)
     editable_task(task)
     task.archived = True
+    task.repeat_daily = False
+    task.repeat_until = None
     audit('task',id,'archived')
     db.session.commit()
     return task_json(task)
@@ -501,6 +509,9 @@ def task_status(id):
         abort(409, description=f'Invalid transition from {task.status} to {data.status}.')
     old = task.status
     task.status = data.status
+    if data.status == 'Cancelled':
+        task.repeat_daily = False
+        task.repeat_until = None
     if data.progress is not None:
         if task.status in ('Completed','Cancelled') and data.status == old:
             abort(409, description='Closed task progress is locked.')

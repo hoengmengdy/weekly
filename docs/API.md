@@ -73,3 +73,16 @@ Task filters: `q`, `status`, `priority`, `department`, `employee`, `manager`, `c
 Report/export filters: `q`, `employee`, `task`, `department`, `manager`, `date_from`, `date_to`, `category`, `priority`, `task_status`, `report_status`; sort `newest|date|oldest`. Date ranges use report date. Analytics accepts both task and report filters plus `period=daily|weekly|monthly` for work trends. Draft hours are excluded from submitted-work metrics. Overall completion rate excludes cancelled/archived tasks. Exports share the report-query implementation.
 
 Health: `GET /health` verifies database connectivity. `GET /` serves the built React app. Deadline notifications are scheduled through `flask --app INDEx notify-deadlines`, not an unauthenticated HTTP endpoint.
+
+Daily repetition: task create/update accept `repeat_daily` (default false) and
+`repeat_until` (nullable ISO date, inclusive). The end date must not precede the
+start date when repetition is enabled. Disabling repetition clears the end date.
+Task responses also include `recurrence_source_id` for generated occurrences.
+Change schedules on their original task; generated copies cannot enable repeat.
+Duplicate creates a non-repeating copy. Archive/cancel stops future repetitions.
+
+`flask --app INDEx generate-daily-tasks` creates today's occurrences (UTC+7).
+Authenticated `GET /auth/me` and `GET /tasks` also generate relevant current-day
+assignments. No unauthenticated cron endpoint is exposed. The database enforces
+one occurrence per source/date. Existing manager/team scope is checked again
+when generating assignments. This feature does not backfill historical days.

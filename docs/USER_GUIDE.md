@@ -25,6 +25,33 @@ The manager may request a task revision from Pending Review, then the assignee r
 
 Task status is shared by the task's assignees. Progress belongs to each assignment; a manager sees the average. Completing the task sets all assignments to 100%. A report's progress is a daily measurement and does not silently complete a task.
 
+## Repeat a task every day
+
+Create or edit the original task, choose its assignees, and enable **Repeat daily**
+(ធ្វើឡើងវិញរៀងរាល់ថ្ងៃ). Optionally choose **Repeat until**; that last date is included.
+Leave it blank for ongoing daily assignments. The first task is the first day's
+work. For a same-day deadline, set Start date and Deadline to the same date.
+
+Each later day creates one fresh task for the selected active assignees, using
+Cambodia time (UTC+7). It starts as Assigned with 0% progress and its own reports,
+comments and review history. Instructions, work links and available attachments
+are copied. If the original deadline is several days after its start, later
+copies keep that same duration. Existing team access rules still apply;
+deactivated employees and employees moved outside the creator's team are skipped.
+
+Complete each day's work normally: completing the original task does not stop
+the schedule. To stop future assignments, use **Stop daily repeat** on the
+original task or untick **Repeat daily** when editing it. Cancelling or archiving
+the original also stops future repeats; generated tasks and reports stay intact.
+Generated copies link managers back to the original schedule and cannot create
+another schedule themselves. Duplicating a task leaves repetition off.
+
+The Docker scheduler checks every minute. Without a scheduler, today's task is
+created when a relevant employee opens the app/task list. Days when the service
+was offline are not backfilled. Repeated requests and job retries cannot create
+more than one occurrence for the same task/date. Repeats create in-app assignment
+notifications. See README for deployment/migration commands.
+
 ## Daily reports
 
 Create a report for a task assigned to you. Multiple reports per day are supported. Drafts can be incomplete; submitting requires work description, expected output, actual output, a valid date and working times. Future report dates are rejected.

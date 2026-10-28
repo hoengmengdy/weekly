@@ -60,7 +60,10 @@ class Task(Base, db.Model):
     internal_notes = db.Column(db.Text, nullable=False, default='')
     work_links = db.Column(db.Text, nullable=False, default='', server_default='')
     archived = db.Column(db.Boolean, nullable=False, default=False)
+    repeat_daily = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false(), index=True)
+    repeat_until = db.Column(db.Date)
     assignments = db.relationship('TaskAssignment', cascade='all, delete-orphan', backref='task')
+    daily_occurrence = db.relationship('DailyTaskOccurrence', foreign_keys='DailyTaskOccurrence.task_id', uselist=False, lazy='selectin')
     __table_args__ = (
         db.CheckConstraint('deadline >= start_date', name='task_dates'),
         db.CheckConstraint('estimated_hours >= 0', name='task_hours'),
@@ -76,6 +79,14 @@ class TaskAssignment(Base, db.Model):
     progress = db.Column(db.Float, nullable=False, default=0)
     user = db.relationship('User')
     __table_args__ = (db.UniqueConstraint('task_id', 'user_id', name='unique_assignment'), db.CheckConstraint('progress >= 0 AND progress <= 100', name='assignment_progress'))
+
+
+class DailyTaskOccurrence(Base, db.Model):
+    __tablename__ = 'daily_task_occurrences'
+    source_task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False, unique=True)
+    run_date = db.Column(db.Date, nullable=False)
+    __table_args__ = (db.UniqueConstraint('source_task_id', 'run_date', name='unique_daily_task_occurrence'),)
 
 
 class DailyReport(Base, db.Model):
